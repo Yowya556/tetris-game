@@ -1,0 +1,2260 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Tetris Duel</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      :root {
+        --bg: #0a1020;
+        --panel: rgba(17, 26, 46, 0.96);
+        --panel-border: rgba(125, 211, 252, 0.25);
+        --primary: #7dd3fc;
+        --accent: #a78bfa;
+        --text: #e5eefb;
+        --muted: #9fb1d1;
+        --board-bg: #091427;
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: radial-gradient(circle at top, #152548 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .game-shell {
+        width: min(94vw, 980px);
+        background: rgba(10, 16, 32, 0.88);
+        border: 1px solid var(--panel-border);
+        border-radius: 22px;
+        box-shadow: 0 18px 60px rgba(2, 6, 23, 0.75);
+        padding: 18px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.4rem, 2vw, 2.2rem);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--primary);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .main-menu {
+        display: grid;
+        justify-items: center;
+        gap: 18px;
+        padding: 46px 20px 56px;
+        text-align: center;
+      }
+
+      .main-menu h2 {
+        margin: 0;
+        color: var(--primary);
+        font-size: clamp(1.6rem, 4vw, 2.8rem);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .main-menu p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .menu-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(190px, 1fr));
+        gap: 12px;
+        width: min(100%, 520px);
+      }
+
+      .menu-options button {
+        min-height: 58px;
+        font-size: 0.95rem;
+      }
+
+      .daily-challenge-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: #06111d;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 6px;
+      }
+
+      .menu-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: var(--muted);
+      }
+
+      .coin-count {
+        color: #fbbf24;
+        font-weight: 800;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(2, 6, 23, 0.76);
+        backdrop-filter: blur(5px);
+        z-index: 30;
+      }
+
+      .shop-card {
+        width: min(94vw, 720px);
+        max-height: min(86vh, 720px);
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+
+      .shop-header,
+      .shop-footer,
+      .shop-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .shop-header { margin-bottom: 14px; }
+      .shop-header h3 { margin: 0; color: var(--primary); }
+      .shop-section { margin-top: 18px; }
+      .shop-section h4 { margin: 0 0 8px; color: var(--muted); }
+      .shop-item {
+        padding: 11px 0;
+        border-top: 1px solid rgba(148, 163, 184, 0.16);
+      }
+      .shop-item p { margin: 3px 0 0; color: var(--muted); font-size: 0.82rem; }
+      .shop-item button { white-space: nowrap; }
+      .shop-item button[disabled] { cursor: default; opacity: 0.65; }
+      .shop-footer { margin-top: 18px; justify-content: flex-end; }
+
+      .leaderboard-card,
+      .submission-card {
+        width: min(94vw, 760px);
+        max-height: min(86vh, 760px);
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+
+      .leaderboard-header,
+      .submission-header,
+      .leaderboard-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .leaderboard-header h3,
+      .submission-header h3 { margin: 0; color: var(--primary); }
+      .leaderboard-status { margin: 12px 0; color: var(--muted); font-size: 0.85rem; }
+      .leaderboard-table { width: 100%; border-collapse: collapse; text-align: left; }
+      .leaderboard-table th,
+      .leaderboard-table td { padding: 11px 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
+      .leaderboard-table th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      .leaderboard-table td:first-child { color: var(--accent); font-weight: 800; }
+      .leaderboard-empty { padding: 24px 8px; color: var(--muted); text-align: center; }
+      .submission-card p { color: var(--muted); }
+      .submission-card label { display: block; margin: 16px 0 6px; color: var(--muted); font-size: 0.85rem; }
+      .submission-card input { width: 100%; background: rgba(15, 23, 42, 0.9); color: var(--text); border: 1px solid rgba(125, 211, 252, 0.25); border-radius: 8px; padding: 11px; }
+      .leaderboard-footer { justify-content: flex-end; margin-top: 16px; }
+
+      button {
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), #60a5fa);
+        color: #06111d;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 10px 14px;
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+      button:hover { filter: brightness(1.05); }
+      button:active { transform: translateY(1px); }
+
+      .seed-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .seed-row input {
+        flex: 1;
+        min-width: 180px;
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text);
+        border: 1px solid rgba(125, 211, 252, 0.25);
+        border-radius: 8px;
+        padding: 9px 10px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid rgba(167, 139, 250, 0.22);
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .match-shell {
+        position: relative;
+      }
+
+      .game-layout {
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+
+      .player-panel {
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .player-panel.single-hidden {
+        display: none;
+      }
+
+      .player-name {
+        font-size: 0.82rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .controls {
+        width: 100%;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .controls strong {
+        color: var(--text);
+      }
+
+      .match-status {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-align: center;
+      }
+
+      canvas {
+        display: block;
+        background: linear-gradient(180deg, var(--board-bg), #040c1a);
+        border: 2px solid rgba(125, 211, 252, 0.25);
+        border-radius: 14px;
+        box-shadow: inset 0 0 18px rgba(125, 211, 252, 0.08);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto;
+        gap: 6px 12px;
+        width: 100%;
+        font-size: 0.95rem;
+      }
+      .stats .label { color: var(--muted); }
+      .stats .value { font-weight: 700; }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(4px);
+        border-radius: 14px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 10;
+      }
+      .overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .overlay-card {
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid rgba(125, 211, 252, 0.24);
+        border-radius: 18px;
+        padding: 24px 20px;
+        text-align: center;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+      }
+      .overlay-card h3 {
+        margin: 0 0 8px;
+        font-size: clamp(1.65rem, 3vw, 2.5rem);
+        color: var(--primary);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .overlay-card p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+
+      .volume-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 12px 0 16px;
+      }
+      .volume-slider {
+        width: 150px;
+        accent-color: #fbbf24;
+      }
+
+      .overlay-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      #toastContainer {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 20;
+      }
+
+      .toast {
+        min-width: 180px;
+        max-width: 260px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid rgba(125, 211, 252, 0.24);
+        color: #fff;
+        box-shadow: 0 15px 32px rgba(0,0,0,0.25);
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      .toast.visible { opacity: 1; transform: translateY(0); }
+      .toast.success {
+        background: rgba(6, 78, 59, 0.95);
+        border-color: rgba(52, 211, 153, 0.5);
+      }
+
+      .crt-mode canvas {
+        filter: saturate(1.2) contrast(1.1) brightness(1.05);
+      }
+
+      .achievements-card {
+        width: min(94vw, 680px);
+        max-height: min(86vh, 750px);
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+
+      .achievements-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .achievements-header h3 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 1.4rem;
+      }
+
+      .achievements-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .achievement-item {
+        padding: 14px;
+        border: 1px solid rgba(125, 211, 252, 0.15);
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.5);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        transition: all 0.2s ease;
+      }
+
+      .achievement-item.unlocked {
+        background: rgba(52, 211, 153, 0.1);
+        border-color: rgba(52, 211, 153, 0.3);
+      }
+
+      .achievement-icon {
+        font-size: 1.8rem;
+        min-width: 40px;
+        text-align: center;
+      }
+
+      .achievement-info {
+        flex: 1;
+      }
+
+      .achievement-name {
+        color: var(--text);
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+
+      .achievement-desc {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+
+      .achievement-status {
+        color: #34d399;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .tutorial-card {
+        width: min(94vw, 720px);
+        max-height: min(86vh, 800px);
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+
+      .tutorial-header {
+        margin-bottom: 20px;
+      }
+
+      .tutorial-header h3 {
+        margin: 0 0 8px;
+        color: var(--primary);
+        font-size: 1.4rem;
+      }
+
+      .tutorial-header p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .tutorial-section {
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(125, 211, 252, 0.1);
+      }
+
+      .tutorial-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+      }
+
+      .tutorial-section h4 {
+        margin: 0 0 10px;
+        color: var(--accent);
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .tutorial-content {
+        color: var(--text);
+        line-height: 1.6;
+        font-size: 0.95rem;
+      }
+
+      .control-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px;
+        margin: 10px 0;
+      }
+
+      .control-item {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(125, 211, 252, 0.1);
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+      }
+
+      .control-key {
+        color: var(--accent);
+        font-weight: 700;
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .control-action {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      @media (max-width: 780px) {
+        .game-shell { padding: 14px; }
+        .topbar { flex-direction: column; align-items: flex-start; }
+        .actions { width: 100%; }
+        .menu-options { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-shell">
+      <div class="topbar">
+        <h1>Neon Tetris</h1>
+        <div class="actions">
+          <button id="startBtn" class="hidden" type="button">Restart</button>
+          <button id="pauseBtn" class="hidden" type="button">Pause</button>
+          <button id="exitBtn" class="hidden" type="button">Main Menu</button>
+          <button id="muteBtn" type="button">Mute</button>
+          <button id="crtToggleBtn" type="button">CRT Off</button>
+        </div>
+      </div>
+
+      <div id="seedControls" class="seed-row hidden">
+        <label for="seedInput">Seed</label>
+        <input id="seedInput" type="text" value="12345" maxlength="32" />
+        <button id="seedApplyBtn" type="button">Apply</button>
+      </div>
+
+      <section id="mainMenu" class="main-menu" aria-labelledby="menuTitle">
+        <h2 id="menuTitle">Choose Your Run</h2>
+        <p>Select a mode to begin.</p>
+        <div class="menu-options">
+          <button id="singlePlayerBtn" type="button">Single Player</button>
+          <button id="battleModeBtn" type="button">2-Player Split-Screen Battle</button>
+          <button id="dailyChallengeBtn" type="button">Daily Challenge <span class="daily-challenge-badge">New</span></button>
+          <button id="achievementsBtn" type="button">Achievements</button>
+          <button id="leaderboardBtn" type="button">Global Leaderboard</button>
+          <button id="tutorialBtn" type="button">How to Play</button>
+        </div>
+        <div class="menu-footer">
+          <span>Tetra-Coins: <span id="coinBalance" class="coin-count">0</span></span>
+          <button id="shopBtn" type="button">Shop / Customize</button>
+        </div>
+      </section>
+
+      <div id="matchShell" class="match-shell hidden">
+        <div id="matchStatus" class="match-status">First to 10,000 points wins</div>
+        <div id="overlay" class="overlay visible" aria-live="polite">
+          <div class="overlay-card">
+            <h3 id="overlayTitle">Neon Tetris</h3>
+            <p id="overlayText">Press Start to begin</p>
+            <div class="volume-row">
+              <label for="volumeSlider">Volume</label>
+              <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" value="80" />
+            </div>
+            <div class="overlay-actions">
+              <button id="overlayBtn" type="button">Start Game</button>
+              <button id="overlayMenuBtn" type="button">Main Menu</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-layout">
+          <div class="player-panel">
+            <div class="player-name">Player 1</div>
+            <canvas id="boardP1" width="300" height="600" aria-label="Player 1 board"></canvas>
+            <div class="stats">
+              <span class="label">Score</span><span id="p1-score" class="value">0</span>
+              <span class="label">Best</span><span id="p1-best" class="value">0</span>
+              <span class="label">Lines</span><span id="p1-lines" class="value">0</span>
+              <span class="label">Level</span><span id="p1-level" class="value">1</span>
+            </div>
+            <div class="controls"><strong>P1:</strong> Arrows move/soft drop, Q rotate, W hard drop, E hold</div>
+          </div>
+
+          <div class="player-panel">
+            <div class="player-name">Player 2</div>
+            <canvas id="boardP2" width="300" height="600" aria-label="Player 2 board"></canvas>
+            <div class="stats">
+              <span class="label">Score</span><span id="p2-score" class="value">0</span>
+              <span class="label">Best</span><span id="p2-best" class="value">0</span>
+              <span class="label">Lines</span><span id="p2-lines" class="value">0</span>
+              <span class="label">Level</span><span id="p2-level" class="value">1</span>
+            </div>
+            <div class="controls"><strong>P2:</strong> A/D move, S soft drop, R rotate, F hard drop, G hold</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="shopModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+      <div class="shop-card">
+        <div class="shop-header">
+          <h3 id="shopTitle">Shop / Customize</h3>
+          <span class="coin-count">Coins: <span id="shopCoinBalance">0</span></span>
+        </div>
+        <div class="shop-section">
+          <h4>Themes</h4>
+          <div id="themeShopList"></div>
+        </div>
+        <div class="shop-section">
+          <h4>Sound Packs</h4>
+          <div id="soundShopList"></div>
+        </div>
+        <div class="shop-footer">
+          <button id="supporterBtn" type="button">Support Developer / Unlock All</button>
+          <button id="closeShopBtn" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="achievementsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="achievementsTitle">
+      <div class="achievements-card">
+        <div class="achievements-header">
+          <h3 id="achievementsTitle">Achievements</h3>
+          <button id="closeAchievementsBtn" type="button">Close</button>
+        </div>
+        <div id="achievementsList" class="achievements-list"></div>
+      </div>
+    </div>
+
+    <div id="tutorialModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="tutorial-card">
+        <div class="tutorial-header">
+          <h3 id="tutorialTitle">How to Play</h3>
+          <p>Master the Neon Tetris basics and dominate the leaderboards</p>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>🎮 Player 1 Controls</h4>
+          <div class="control-grid">
+            <div class="control-item">
+              <span class="control-key">← →</span>
+              <span class="control-action">Move Left/Right</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">↓</span>
+              <span class="control-action">Soft Drop</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">Q</span>
+              <span class="control-action">Rotate</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">W</span>
+              <span class="control-action">Hard Drop</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">E</span>
+              <span class="control-action">Hold Piece</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>🎮 Player 2 Controls</h4>
+          <div class="control-grid">
+            <div class="control-item">
+              <span class="control-key">A / D</span>
+              <span class="control-action">Move Left/Right</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">S</span>
+              <span class="control-action">Soft Drop</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">R</span>
+              <span class="control-action">Rotate</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">F</span>
+              <span class="control-action">Hard Drop</span>
+            </div>
+            <div class="control-item">
+              <span class="control-key">G</span>
+              <span class="control-action">Hold Piece</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>💰 Scoring & Coins</h4>
+          <div class="tutorial-content">
+            <strong>Points:</strong> Cleared lines and hard drops award points. Combos and levels multiply your score multiplier.
+            <br><br>
+            <strong>Tetra-Coins:</strong> Earn coins by clearing lines (5 coins per line), reaching score milestones (25 coins per 1,000 points), or winning multiplayer matches (100 coins).
+          </div>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>🗑️ Garbage Blocks (Multiplayer)</h4>
+          <div class="tutorial-content">
+            When you clear 2+ lines in battle mode, send garbage rows to your opponent. Garbage rows have one open hole. Your opponent can cancel garbage by clearing lines.
+            <br><br>
+            <strong>Tip:</strong> Build combos to send more garbage and pressure your opponent!
+          </div>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>🎯 Game Modes</h4>
+          <div class="tutorial-content">
+            <strong>Single Player:</strong> Reach 10,000 points to win and set your high score.
+            <br><br>
+            <strong>Split-Screen Battle:</strong> First player to 10,000 points wins. Combat system uses garbage blocks and line clears for attacks.
+            <br><br>
+            <strong>Daily Challenge:</strong> A unique modifier changes every day. Compete for the best score with today's challenge!
+          </div>
+        </div>
+
+        <div class="tutorial-section">
+          <h4>⭐ Tips & Tricks</h4>
+          <div class="tutorial-content">
+            • Press <strong>M</strong> to mute/unmute audio
+            <br>
+            • Press <strong>P</strong> to pause your game
+            <br>
+            • Hold a piece strategically to set up combos
+            <br>
+            • Watch for garbage—cancel it early with multi-line clears
+            <br>
+            • Higher levels = faster drops and higher scoring multipliers
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="closeTutorialBtn" type="button">Got It!</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="leaderboardModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboardTitle">
+      <div class="leaderboard-card">
+        <div class="leaderboard-header">
+          <h3 id="leaderboardTitle">Global Leaderboard</h3>
+          <button id="closeLeaderboardBtn" type="button">Close</button>
+        </div>
+        <div id="leaderboardStatus" class="leaderboard-status" aria-live="polite"></div>
+        <table class="leaderboard-table">
+          <thead><tr><th>Rank</th><th>Player Name</th><th>Score</th><th>Date</th></tr></thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+        <div class="leaderboard-footer"><button id="refreshLeaderboardBtn" type="button">Refresh</button></div>
+      </div>
+    </div>
+
+    <div id="submissionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="submissionTitle">
+      <form id="submissionForm" class="submission-card">
+        <div class="submission-header"><h3 id="submissionTitle">Submit Your Score</h3></div>
+        <p>Your score of <strong id="submissionScore">0</strong> can join the global board.</p>
+        <label for="playerNameInput">Player name</label>
+        <input id="playerNameInput" type="text" maxlength="24" autocomplete="nickname" required placeholder="Enter a name" />
+        <div class="leaderboard-footer">
+          <button id="skipSubmissionBtn" type="button">Skip</button>
+          <button type="submit">Submit Score</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      (() => {
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK = 30;
+        const MATCH_TARGET = 10000;
+        const PIECES = {
+          I: [[1, 1, 1, 1]],
+          J: [[1, 0, 0], [1, 1, 1]],
+          L: [[0, 0, 1], [1, 1, 1]],
+          O: [[1, 1], [1, 1]],
+          S: [[0, 1, 1], [1, 1, 0]],
+          T: [[0, 1, 0], [1, 1, 1]],
+          Z: [[1, 1, 0], [0, 1, 1]]
+        };
+
+        const COLORS = {
+          I: '#38bdf8',
+          J: '#60a5fa',
+          L: '#fbbf24',
+          O: '#facc15',
+          S: '#4ade80',
+          T: '#c084fc',
+          Z: '#f87171',
+          garbage: '#64748b'
+        };
+        const HIGH_SCORE_KEY = 'neon-tetris-high-scores-v1';
+        const LOCAL_LEADERBOARD_KEY = 'neon-tetris-global-leaderboard-v1';
+        const SUPABASE_URL = ''; // Add your Supabase project URL.
+        const SUPABASE_ANON_KEY = ''; // Add your Supabase anon key.
+        const supabaseClient = SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+          : null;
+        const PROFILE_KEY = 'neon-tetris-profile-v1';
+        const THEMES = {
+          cyberpunk: {
+            name: 'Cyberpunk',
+            cost: 0,
+            bg: '#091427',
+            accent: '#7dd3fc',
+            accentAlt: '#a78bfa',
+            colors: { I: '#38bdf8', J: '#60a5fa', L: '#fbbf24', O: '#facc15', S: '#4ade80', T: '#c084fc', Z: '#f87171' }
+          },
+          gameboy: {
+            name: 'Game Boy Green',
+            cost: 120,
+            bg: '#17251a',
+            accent: '#b8d98a',
+            accentAlt: '#6f9b62',
+            colors: { I: '#9bbc0f', J: '#8bac0f', L: '#7b8f27', O: '#c4d479', S: '#6f8f3d', T: '#a8bd55', Z: '#536b2f' }
+          },
+          matrix: {
+            name: 'Matrix',
+            cost: 180,
+            bg: '#03140b',
+            accent: '#4ade80',
+            accentAlt: '#16a34a',
+            colors: { I: '#86efac', J: '#4ade80', L: '#22c55e', O: '#bbf7d0', S: '#16a34a', T: '#15803d', Z: '#166534' }
+          }
+        };
+        const SOUND_PACKS = {
+          arcade: { name: 'Arcade Classic', cost: 0 },
+          synth: { name: 'Synthwave', cost: 100 },
+          chip: { name: '8-Bit Chips', cost: 150 }
+        };
+
+        const ACHIEVEMENTS = {
+          firstLineClear: {
+            id: 'firstLineClear',
+            name: 'First Blood',
+            desc: 'Clear your first line',
+            icon: '🎯',
+            check: (player) => player.lines >= 1
+          },
+          tetrisMaster: {
+            id: 'tetrisMaster',
+            name: 'Tetris Master',
+            desc: 'Clear 4 lines at once (Tetris)',
+            icon: '⚡',
+            check: null // Checked separately in clearCompletedRows
+          },
+          coinHoarder: {
+            id: 'coinHoarder',
+            name: 'Coin Hoarder',
+            desc: 'Earn 500 Tetra-Coins',
+            icon: '💰',
+            check: () => profile.coins >= 500
+          },
+          lineMaster: {
+            id: 'lineMaster',
+            name: 'Line Master',
+            desc: 'Clear 50 lines total',
+            icon: '📊',
+            check: () => {
+              const total = players.reduce((sum, p) => sum + p.lines, 0);
+              return total >= 50;
+            }
+          },
+          speedDemon: {
+            id: 'speedDemon',
+            name: 'Speed Demon',
+            desc: 'Reach level 5 in a single game',
+            icon: '🚀',
+            check: (player) => player.level >= 5
+          },
+          battleWinner: {
+            id: 'battleWinner',
+            name: 'Duel Champion',
+            desc: 'Win a multiplayer battle',
+            icon: '🏆',
+            check: null // Checked separately on match win
+          },
+          comboKing: {
+            id: 'comboKing',
+            name: 'Combo King',
+            desc: 'Get a combo of 5 or more',
+            icon: '🔥',
+            check: (player) => player.combo >= 5
+          },
+          scoreVillain: {
+            id: 'scoreVillain',
+            name: 'Score Villain',
+            desc: 'Reach 25,000 points in a single game',
+            icon: '👹',
+            check: (player) => player.score >= 25000
+          }
+        };
+
+        const DAILY_MODIFIERS = [
+          {
+            name: 'Speed Boost',
+            desc: 'Pieces drop 30% faster',
+            icon: '⚡',
+            apply: (players) => players.forEach(p => p.dropInterval *= 0.7)
+          },
+          {
+            name: 'Slow Motion',
+            desc: 'Pieces drop 40% slower',
+            icon: '🐢',
+            apply: (players) => players.forEach(p => p.dropInterval *= 1.4)
+          },
+          {
+            name: 'Limited Palette',
+            desc: 'Only I, O, and T pieces spawn',
+            icon: '🎨',
+            apply: null // Handled in randomPieceType
+          },
+          {
+            name: 'Chaos Mode',
+            desc: 'Random pieces every spawn',
+            icon: '🌀',
+            apply: null // Already random
+          },
+          {
+            name: 'Double Score',
+            desc: 'All points are doubled',
+            icon: '💲',
+            apply: null // Handled in addScore
+          },
+          {
+            name: 'No Hold',
+            desc: 'Hold piece is disabled',
+            icon: '🚫',
+            apply: (players) => players.forEach(p => p.holdDisabled = true)
+          }
+        ];
+
+        const ACHIEVEMENTS_KEY = 'neon-tetris-achievements-v1';
+        let dailyModifierIndex = -1;
+        let dailyModifierName = '';
+        let dailyModifierDesc = '';
+        let dailyModifierIcon = '';
+        let dailyModifierActive = false;
+
+        const ui = {
+          startBtn: document.getElementById('startBtn'),
+          pauseBtn: document.getElementById('pauseBtn'),
+          muteBtn: document.getElementById('muteBtn'),
+          crtToggleBtn: document.getElementById('crtToggleBtn'),
+          exitBtn: document.getElementById('exitBtn'),
+          mainMenu: document.getElementById('mainMenu'),
+          singlePlayerBtn: document.getElementById('singlePlayerBtn'),
+          battleModeBtn: document.getElementById('battleModeBtn'),
+          dailyChallengeBtn: document.getElementById('dailyChallengeBtn'),
+          achievementsBtn: document.getElementById('achievementsBtn'),
+          tutorialBtn: document.getElementById('tutorialBtn'),
+          leaderboardBtn: document.getElementById('leaderboardBtn'),
+          leaderboardModal: document.getElementById('leaderboardModal'),
+          leaderboardBody: document.getElementById('leaderboardBody'),
+          leaderboardStatus: document.getElementById('leaderboardStatus'),
+          closeLeaderboardBtn: document.getElementById('closeLeaderboardBtn'),
+          refreshLeaderboardBtn: document.getElementById('refreshLeaderboardBtn'),
+          submissionModal: document.getElementById('submissionModal'),
+          submissionForm: document.getElementById('submissionForm'),
+          submissionScore: document.getElementById('submissionScore'),
+          playerNameInput: document.getElementById('playerNameInput'),
+          skipSubmissionBtn: document.getElementById('skipSubmissionBtn'),
+          matchShell: document.getElementById('matchShell'),
+          seedControls: document.getElementById('seedControls'),
+          overlay: document.getElementById('overlay'),
+          overlayTitle: document.getElementById('overlayTitle'),
+          overlayText: document.getElementById('overlayText'),
+          overlayBtn: document.getElementById('overlayBtn'),
+          overlayMenuBtn: document.getElementById('overlayMenuBtn'),
+          volumeSlider: document.getElementById('volumeSlider'),
+          seedInput: document.getElementById('seedInput'),
+          seedApplyBtn: document.getElementById('seedApplyBtn'),
+          toastContainer: document.getElementById('toastContainer'),
+          matchStatus: document.getElementById('matchStatus'),
+          coinBalance: document.getElementById('coinBalance'),
+          shopBtn: document.getElementById('shopBtn'),
+          shopModal: document.getElementById('shopModal'),
+          shopCoinBalance: document.getElementById('shopCoinBalance'),
+          themeShopList: document.getElementById('themeShopList'),
+          soundShopList: document.getElementById('soundShopList'),
+          supporterBtn: document.getElementById('supporterBtn'),
+          closeShopBtn: document.getElementById('closeShopBtn'),
+          achievementsModal: document.getElementById('achievementsModal'),
+          achievementsList: document.getElementById('achievementsList'),
+          closeAchievementsBtn: document.getElementById('closeAchievementsBtn'),
+          tutorialModal: document.getElementById('tutorialModal'),
+          closeTutorialBtn: document.getElementById('closeTutorialBtn')
+        };
+        const game = {
+          seed: '12345',
+          mode: 'menu',
+          running: false,
+          lastTimestamp: 0,
+          animationId: null
+        };
+
+        const profile = loadProfile();
+        let activeTheme = profile.activeTheme;
+
+        let audioCtx = null;
+        let masterGain = null;
+        let masterVolume = 0.8;
+        let muted = false;
+
+        function hashString(str) {
+          let hash = 2166136261 >>> 0;
+          for (let i = 0; i < str.length; i++) {
+            hash ^= str.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+          }
+          return hash >>> 0;
+        }
+
+        function mulberry32(seed) {
+          return function () {
+            let t = (seed += 0x6D2B79F5);
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        function parseSeed(rawSeed) {
+          return String(rawSeed || '').trim() || '12345';
+        }
+
+        function makeRng(seedText) {
+          return mulberry32(hashString(parseSeed(seedText)));
+        }
+
+        function loadProfile() {
+          try {
+            const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+            return {
+              coins: Number.isFinite(stored.coins) ? Math.max(0, stored.coins) : 0,
+              activeTheme: THEMES[stored.activeTheme] ? stored.activeTheme : 'cyberpunk',
+              activeSound: SOUND_PACKS[stored.activeSound] ? stored.activeSound : 'arcade',
+              themes: { cyberpunk: true, ...(stored.themes || {}) },
+              sounds: { arcade: true, ...(stored.sounds || {}) },
+              supporter: stored.supporter === true
+            };
+          } catch (error) {
+            return { coins: 0, activeTheme: 'cyberpunk', activeSound: 'arcade', themes: { cyberpunk: true }, sounds: { arcade: true }, supporter: false };
+          }
+        }
+
+        function saveProfile() {
+          try {
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+          } catch (error) {
+            return false;
+          }
+          return true;
+        }
+
+        function loadAchievements() {
+          try {
+            const stored = JSON.parse(localStorage.getItem(ACHIEVEMENTS_KEY) || '{}');
+            return stored && typeof stored === 'object' ? stored : {};
+          } catch (error) {
+            return {};
+          }
+        }
+
+        function saveAchievements(achievements) {
+          try {
+            localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(achievements));
+          } catch (error) {
+            return false;
+          }
+          return true;
+        }
+
+        function checkAndUnlockAchievement(achievementId, checkFn) {
+          const allAchievements = loadAchievements();
+          if (allAchievements[achievementId]) return; // Already unlocked
+          const achievement = ACHIEVEMENTS[achievementId];
+          if (!achievement || !checkFn()) return;
+          allAchievements[achievementId] = { unlockedAt: Date.now() };
+          saveAchievements(allAchievements);
+          showToast(`🌟 Achievement: ${achievement.name}`, 'success');
+        }
+
+        function getDailyModifier() {
+          const today = new Date();
+          const dateString = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+          const dayHash = hashString(dateString);
+          return dayHash % DAILY_MODIFIERS.length;
+        }
+
+        function initializeDailyChallenge() {
+          dailyModifierIndex = getDailyModifier();
+          const modifier = DAILY_MODIFIERS[dailyModifierIndex];
+          dailyModifierName = modifier.name;
+          dailyModifierDesc = modifier.desc;
+          dailyModifierIcon = modifier.icon;
+        }
+
+        function applyDailyModifier(players) {
+          if (!dailyModifierActive) return;
+          const modifier = DAILY_MODIFIERS[dailyModifierIndex];
+          if (modifier.apply) {
+            modifier.apply(players);
+          }
+        }
+
+        function updateCoinUI() {
+          const amount = String(profile.coins);
+          ui.coinBalance.textContent = amount;
+          ui.shopCoinBalance.textContent = amount;
+        }
+
+        function awardCoins(amount, reason) {
+          if (amount <= 0) return;
+          profile.coins += amount;
+          saveProfile();
+          updateCoinUI();
+          showToast(`+${amount} Tetra-Coins${reason ? `: ${reason}` : ''}`, 'success');
+          // Check coin-based achievements
+          checkAndUnlockAchievement('coinHoarder', () => profile.coins >= 500);
+        }
+
+        function applyTheme(themeId) {
+          const theme = THEMES[themeId] || THEMES.cyberpunk;
+          activeTheme = themeId;
+          Object.assign(COLORS, theme.colors);
+          document.documentElement.style.setProperty('--primary', theme.accent);
+          document.documentElement.style.setProperty('--accent', theme.accentAlt);
+          document.documentElement.style.setProperty('--board-bg', theme.bg);
+          document.documentElement.style.setProperty('--bg', theme.bg);
+          document.body.dataset.theme = themeId;
+          players.forEach((player) => {
+            if (player.current) player.current.color = COLORS[player.current.type];
+            drawBoard(player);
+          });
+          profile.activeTheme = themeId;
+          saveProfile();
+        }
+
+        function renderShopList(list, catalog, owned, kind) {
+          list.replaceChildren();
+          Object.entries(catalog).forEach(([id, item]) => {
+            const row = document.createElement('div');
+            row.className = 'shop-item';
+            const info = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = item.name;
+            info.appendChild(title);
+            const description = document.createElement('p');
+            description.textContent = owned[id] ? 'Unlocked' : `Unlock for ${item.cost} coins`;
+            info.appendChild(description);
+            const action = document.createElement('button');
+            action.type = 'button';
+            if (owned[id]) {
+              const selected = kind === 'theme' ? activeTheme === id : profile.activeSound === id;
+              action.textContent = selected ? 'Selected' : 'Use';
+              action.disabled = selected;
+              action.addEventListener('click', () => {
+                if (kind === 'theme') applyTheme(id);
+                else {
+                  profile.activeSound = id;
+                  saveProfile();
+                }
+                renderShop();
+              });
+            } else {
+              action.textContent = `Unlock (${item.cost})`;
+              action.addEventListener('click', () => purchaseItem(id, item, kind));
+            }
+            row.append(info, action);
+            list.appendChild(row);
+          });
+        }
+
+        function renderShop() {
+          updateCoinUI();
+          renderShopList(ui.themeShopList, THEMES, profile.themes, 'theme');
+          renderShopList(ui.soundShopList, SOUND_PACKS, profile.sounds, 'sound');
+          ui.supporterBtn.textContent = profile.supporter ? 'Supporter Pack Unlocked' : 'Support Developer / Unlock All';
+          ui.supporterBtn.disabled = profile.supporter;
+        }
+
+        function purchaseItem(id, item, kind) {
+          if (profile.coins < item.cost) {
+            showToast(`Need ${item.cost - profile.coins} more Tetra-Coins`, 'info');
+            return;
+          }
+          profile.coins -= item.cost;
+          profile[kind === 'theme' ? 'themes' : 'sounds'][id] = true;
+          saveProfile();
+          updateCoinUI();
+          renderShop();
+          showToast(`${item.name} unlocked`, 'success');
+        }
+
+        function unlockAllAsSupporter() {
+          profile.supporter = true;
+          Object.keys(THEMES).forEach((id) => { profile.themes[id] = true; });
+          Object.keys(SOUND_PACKS).forEach((id) => { profile.sounds[id] = true; });
+          saveProfile();
+          renderShop();
+          showToast('Thank you! All cosmetics unlocked.', 'success');
+        }
+
+        function openShop() {
+          renderShop();
+          ui.shopModal.classList.remove('hidden');
+        }
+
+        function closeShop() {
+          ui.shopModal.classList.add('hidden');
+        }
+
+        function renderAchievements() {
+          const allAchievements = loadAchievements();
+          ui.achievementsList.replaceChildren();
+          Object.entries(ACHIEVEMENTS).forEach(([id, achievement]) => {
+            const item = document.createElement('div');
+            item.className = 'achievement-item';
+            if (allAchievements[id]) {
+              item.classList.add('unlocked');
+            }
+            const icon = document.createElement('div');
+            icon.className = 'achievement-icon';
+            icon.textContent = achievement.icon;
+            const info = document.createElement('div');
+            info.className = 'achievement-info';
+            const name = document.createElement('p');
+            name.className = 'achievement-name';
+            name.textContent = achievement.name;
+            const desc = document.createElement('p');
+            desc.className = 'achievement-desc';
+            desc.textContent = achievement.desc;
+            info.append(name, desc);
+            let status = null;
+            if (allAchievements[id]) {
+              status = document.createElement('div');
+              status.className = 'achievement-status';
+              status.textContent = '\u2713 Unlocked';
+            }
+            item.append(icon, info);
+            if (status) item.appendChild(status);
+            ui.achievementsList.appendChild(item);
+          });
+        }
+
+        function openAchievements() {
+          renderAchievements();
+          ui.achievementsModal.classList.remove('hidden');
+        }
+
+        function closeAchievements() {
+          ui.achievementsModal.classList.add('hidden');
+        }
+
+        function openTutorial() {
+          ui.tutorialModal.classList.remove('hidden');
+        }
+
+        function closeTutorial() {
+          ui.tutorialModal.classList.add('hidden');
+        }
+
+        function createBoard() {
+          return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        }
+
+        function cloneMatrix(matrix) {
+          return matrix.map((row) => row.slice());
+        }
+
+        function createPiece(type) {
+          return {
+            type,
+            matrix: cloneMatrix(PIECES[type]),
+            x: 0,
+            y: 0,
+            color: COLORS[type]
+          };
+        }
+
+        function createPlayer(id, name, canvasId, scoreId, linesId, levelId) {
+          const canvas = document.getElementById(canvasId);
+          const ctx = canvas.getContext('2d');
+          return {
+            id,
+            name,
+            canvas,
+            ctx,
+            panel: canvas.closest('.player-panel'),
+            scoreEl: document.getElementById(scoreId),
+            bestEl: document.getElementById(`${id}-best`),
+            linesEl: document.getElementById(linesId),
+            levelEl: document.getElementById(levelId),
+            board: createBoard(),
+            current: null,
+            next: null,
+            hold: null,
+            canHold: true,
+            score: 0,
+            lines: 0,
+            level: 1,
+            dropInterval: 700,
+            accumulator: 0,
+            running: false,
+            paused: false,
+            gameOver: false,
+            combo: 0,
+            pendingGarbage: 0,
+            milestone: 0,
+            rng: makeRng('12345')
+          };
+        }
+
+        const player1 = createPlayer('p1', 'Player 1', 'boardP1', 'p1-score', 'p1-lines', 'p1-level');
+        const player2 = createPlayer('p2', 'Player 2', 'boardP2', 'p2-score', 'p2-lines', 'p2-level');
+        const players = [player1, player2];
+
+        function setSeed(rawSeed) {
+          game.seed = parseSeed(rawSeed);
+          ui.seedInput.value = game.seed;
+          players.forEach((player) => {
+            player.rng = makeRng(game.seed);
+          });
+          const url = new URL(window.location.href);
+          url.searchParams.set('seed', game.seed);
+          window.history.replaceState({}, '', url);
+        }
+
+        function loadHighScores() {
+          try {
+            const stored = JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '{}');
+            return stored && typeof stored === 'object' ? stored : {};
+          } catch (error) {
+            return {};
+          }
+        }
+
+        function loadLocalLeaderboard() {
+          try {
+            const stored = JSON.parse(localStorage.getItem(LOCAL_LEADERBOARD_KEY) || '[]');
+            return Array.isArray(stored) ? stored : [];
+          } catch (error) {
+            return [];
+          }
+        }
+
+        function saveLocalLeaderboard(entries) {
+          try {
+            localStorage.setItem(LOCAL_LEADERBOARD_KEY, JSON.stringify(entries.slice(0, 50)));
+          } catch (error) {
+            return false;
+          }
+          return true;
+        }
+
+        function normalizeLeaderboardEntries(entries) {
+          return entries
+            .filter((entry) => entry && typeof entry.player_name === 'string' && Number.isFinite(Number(entry.score)))
+            .map((entry) => ({
+              player_name: entry.player_name.trim().slice(0, 24) || 'Anonymous',
+              score: Math.max(0, Math.floor(Number(entry.score))),
+              created_at: entry.created_at || new Date().toISOString()
+            }))
+            .sort((left, right) => right.score - left.score)
+            .slice(0, 50);
+        }
+
+        async function fetchLeaderboard() {
+          if (supabaseClient) {
+            try {
+              const { data, error } = await supabaseClient
+                .from('scores')
+                .select('player_name, score, created_at')
+                .order('score', { ascending: false })
+                .limit(50);
+              if (!error) return { entries: normalizeLeaderboardEntries(data || []), remote: true };
+            } catch (error) {
+              // Network failures use the local board below.
+            }
+          }
+          return { entries: normalizeLeaderboardEntries(loadLocalLeaderboard()), remote: false };
+        }
+
+        function renderLeaderboard(entries) {
+          ui.leaderboardBody.replaceChildren();
+          if (!entries.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 4;
+            cell.className = 'leaderboard-empty';
+            cell.textContent = 'No scores yet. Be the first on the board.';
+            row.appendChild(cell);
+            ui.leaderboardBody.appendChild(row);
+            return;
+          }
+          entries.forEach((entry, index) => {
+            const row = document.createElement('tr');
+            [String(index + 1), entry.player_name, entry.score.toLocaleString(), new Date(entry.created_at).toLocaleDateString()].forEach((value) => {
+              const cell = document.createElement('td');
+              cell.textContent = value;
+              row.appendChild(cell);
+            });
+            ui.leaderboardBody.appendChild(row);
+          });
+        }
+
+        async function refreshLeaderboard() {
+          ui.leaderboardStatus.textContent = 'Loading scores...';
+          const result = await fetchLeaderboard();
+          renderLeaderboard(result.entries);
+          ui.leaderboardStatus.textContent = result.remote
+            ? 'Live global scores'
+            : 'Offline mode: showing scores saved on this device';
+        }
+
+        function openLeaderboard() {
+          ui.leaderboardModal.classList.remove('hidden');
+          refreshLeaderboard();
+        }
+
+        function closeLeaderboard() {
+          ui.leaderboardModal.classList.add('hidden');
+        }
+
+        function openSubmission(score) {
+          ui.submissionScore.textContent = score.toLocaleString();
+          ui.playerNameInput.value = localStorage.getItem('neon-tetris-player-name') || '';
+          ui.submissionModal.classList.remove('hidden');
+          ui.playerNameInput.focus();
+        }
+
+        function closeSubmission() {
+          ui.submissionModal.classList.add('hidden');
+        }
+
+        async function submitScore(event) {
+          event.preventDefault();
+          const playerName = ui.playerNameInput.value.trim().slice(0, 24);
+          const score = Number(ui.submissionScore.textContent.replace(/,/g, ''));
+          if (!playerName || !Number.isFinite(score)) return;
+          localStorage.setItem('neon-tetris-player-name', playerName);
+          const entry = { player_name: playerName, score: Math.floor(score), created_at: new Date().toISOString() };
+          let submittedRemotely = false;
+          if (supabaseClient) {
+            try {
+              const { error } = await supabaseClient.from('scores').insert(entry);
+              submittedRemotely = !error;
+            } catch (error) {
+              submittedRemotely = false;
+            }
+          }
+          if (!submittedRemotely) {
+            saveLocalLeaderboard(normalizeLeaderboardEntries([entry, ...loadLocalLeaderboard()]));
+          }
+          closeSubmission();
+          showToast(submittedRemotely ? 'Score added to the global board' : 'Score saved locally for offline mode', 'success');
+        }
+
+        function getHighScore(player) {
+          const scores = loadHighScores();
+          const modeScores = scores[game.mode] || {};
+          return Number.isFinite(modeScores[player.id]) ? modeScores[player.id] : 0;
+        }
+
+        function saveHighScore(player) {
+          const scores = loadHighScores();
+          const modeScores = scores[game.mode] || {};
+          const best = Math.max(getHighScore(player), player.score);
+          modeScores[player.id] = best;
+          scores[game.mode] = modeScores;
+          try {
+            localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(scores));
+          } catch (error) {
+            return best;
+          }
+          return best;
+        }
+
+        function ensureAudioContext() {
+          if (!audioCtx) {
+            const AudioCtor = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtor) return null;
+            audioCtx = new AudioCtor();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = muted ? 0 : masterVolume;
+            masterGain.connect(audioCtx.destination);
+          }
+          if (audioCtx.state === 'suspended' && !muted) {
+            audioCtx.resume();
+          }
+          return audioCtx;
+        }
+
+        function playTone({ frequency = 220, duration = 0.08, type = 'square', volume = 0.06, delay = 0, slideTo = null }) {
+          const ctx = ensureAudioContext();
+          if (!ctx || !masterGain || muted) return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startAt = ctx.currentTime + delay;
+          osc.type = type;
+          osc.frequency.setValueAtTime(frequency, startAt);
+          if (slideTo) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), startAt + duration);
+          }
+          gain.gain.setValueAtTime(0.0001, startAt);
+          gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+          osc.connect(gain);
+          gain.connect(masterGain);
+          osc.start(startAt);
+          osc.stop(startAt + duration + 0.03);
+        }
+
+        function showToast(message, tone = 'info') {
+          const toast = document.createElement('div');
+          toast.className = `toast ${tone}`;
+          toast.textContent = message;
+          ui.toastContainer.appendChild(toast);
+          requestAnimationFrame(() => toast.classList.add('visible'));
+          setTimeout(() => {
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+          }, 2200);
+        }
+
+        function setVolume(nextVolume) {
+          masterVolume = Math.min(1, Math.max(0, nextVolume));
+          muted = masterVolume === 0;
+          if (masterGain && audioCtx) {
+            masterGain.gain.setTargetAtTime(muted ? 0 : masterVolume, audioCtx.currentTime, 0.05);
+          }
+          ui.volumeSlider.value = String(Math.round(masterVolume * 100));
+        }
+
+        function toggleMute() {
+          setVolume(muted ? 0.8 : 0);
+        }
+
+        function randomPieceType(rng) {
+          const keys = Object.keys(PIECES);
+          // Limited palette daily modifier
+          if (dailyModifierActive && dailyModifierIndex === 2) {
+            return ['I', 'O', 'T'][Math.floor(rng() * 3)];
+          }
+          return keys[Math.floor(rng() * keys.length)];
+        }
+
+        function collides(board, matrix, offsetX, offsetY) {
+          for (let y = 0; y < matrix.length; y++) {
+            for (let x = 0; x < matrix[y].length; x++) {
+              if (!matrix[y][x]) continue;
+              const boardX = offsetX + x;
+              const boardY = offsetY + y;
+              if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return true;
+              if (boardY >= 0 && board[boardY][boardX]) return true;
+            }
+          }
+          return false;
+        }
+
+        function spawnPiece(player) {
+          if (!player.next) {
+            player.next = createPiece(randomPieceType(player.rng));
+          }
+          player.current = player.next;
+          player.current.x = Math.floor((COLS - player.current.matrix[0].length) / 2);
+          player.current.y = -1;
+          player.next = createPiece(randomPieceType(player.rng));
+          player.canHold = true;
+
+          if (collides(player.board, player.current.matrix, player.current.x, player.current.y)) {
+            endPlayerGame(player);
+          }
+        }
+
+        function resetPlayer(player) {
+          player.board = createBoard();
+          player.current = null;
+          player.next = createPiece(randomPieceType(player.rng));
+          player.hold = null;
+          player.canHold = true;
+          player.score = 0;
+          player.lines = 0;
+          player.combo = 0;
+          player.pendingGarbage = 0;
+          player.milestone = 0;
+          player.level = 1;
+          player.dropInterval = 700;
+          player.accumulator = 0;
+          player.running = true;
+          player.paused = false;
+          player.gameOver = false;
+          player.holdDisabled = false;
+          spawnPiece(player);
+          updateHUD(player);
+          drawBoard(player);
+        }
+
+        function hideOverlay() {
+          ui.overlay.classList.remove('visible');
+        }
+
+        function showOverlay(title, text, buttonText) {
+          ui.overlayTitle.textContent = title;
+          ui.overlayText.textContent = text;
+          ui.overlayBtn.textContent = buttonText;
+          ui.overlay.classList.add('visible');
+        }
+
+        function startMatch() {
+          if (game.mode === 'menu') return;
+          game.running = false;
+          stopGameLoop();
+          game.running = true;
+          game.lastTimestamp = performance.now();
+          ui.matchStatus.textContent = game.mode === 'single'
+            ? `Single Player: reach ${MATCH_TARGET.toLocaleString()} points`
+            : game.mode === 'daily'
+            ? `Daily Challenge: ${dailyModifierIcon} ${dailyModifierName} - reach ${MATCH_TARGET.toLocaleString()} points`
+            : `First to ${MATCH_TARGET.toLocaleString()} points wins`;
+          players.forEach((player) => {
+            player.rng = makeRng(game.seed);
+            resetPlayer(player);
+          });
+          // Apply daily modifier if in daily challenge mode
+          if (game.mode === 'daily') {
+            applyDailyModifier(players);
+          }
+          if (game.mode === 'single' || game.mode === 'daily') {
+            player2.running = false;
+            player2.current = null;
+            drawBoard(player2);
+            updateHUD(player2);
+          }
+          hideOverlay();
+          if (game.animationId) {
+            cancelAnimationFrame(game.animationId);
+          }
+          game.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function togglePause() {
+          if (!game.running) return;
+          const shouldPause = !players.some((player) => player.paused);
+          players.forEach((player) => {
+            if (player.running && !player.gameOver) {
+              player.paused = shouldPause;
+            }
+          });
+          if (shouldPause) {
+            showOverlay('Paused', 'Duel paused', 'Resume');
+          } else {
+            hideOverlay();
+          }
+        }
+
+        function getOpponent(player) {
+          return player.id === 'p1' ? player2 : player1;
+        }
+
+        function sendGarbage(player, rows) {
+          if (game.mode !== 'battle') return;
+          const target = getOpponent(player);
+          const cancelled = Math.min(player.pendingGarbage, rows);
+          player.pendingGarbage -= cancelled;
+          const attack = rows - cancelled;
+          if (attack > 0) {
+            target.pendingGarbage += attack;
+            showToast(`${player.name} sent ${attack} garbage rows`, 'success');
+          } else if (cancelled > 0) {
+            showToast(`${player.name} cancelled ${cancelled} garbage rows`, 'info');
+          }
+        }
+
+        function applyPendingGarbage(player) {
+          if (player.pendingGarbage === 0) return;
+          const garbageRows = [];
+          for (let i = 0; i < player.pendingGarbage; i++) {
+            const row = Array(COLS).fill('garbage');
+            row[Math.floor(player.rng() * COLS)] = 0;
+            garbageRows.push(row);
+          }
+          player.board.push(...garbageRows);
+          while (player.board.length > ROWS) {
+            player.board.shift();
+          }
+          player.pendingGarbage = 0;
+        }
+
+        function clearCompletedRows(player) {
+          const rowsToClear = [];
+          for (let y = ROWS - 1; y >= 0; y--) {
+            if (player.board[y].every((cell) => cell !== 0 && cell !== 'garbage')) {
+              rowsToClear.push(y);
+            }
+          }
+
+          if (rowsToClear.length === 0) {
+            player.combo = 0;
+            return 0;
+          }
+
+          rowsToClear.forEach((rowIndex) => {
+            player.board.splice(rowIndex, 1);
+            player.board.unshift(Array(COLS).fill(0));
+          });
+
+          player.lines += rowsToClear.length;
+          awardCoins(rowsToClear.length * 5, `${rowsToClear.length} line${rowsToClear.length === 1 ? '' : 's'}`);
+          player.combo += 1;
+          player.level = Math.floor(player.lines / 10) + 1;
+          const baseScore = [0, 100, 300, 500, 800][rowsToClear.length] * player.level * 10;
+          const comboBonus = Math.max(0, player.combo - 1) * 50 * player.level;
+          addScore(player, baseScore + comboBonus);
+          player.dropInterval = Math.max(120, 700 - (player.level - 1) * 40);
+
+          // Check for First Line Clear achievement
+          checkAndUnlockAchievement('firstLineClear', () => player.lines >= 1);
+
+          // Check for Tetris Master achievement
+          if (rowsToClear.length >= 4) {
+            checkAndUnlockAchievement('tetrisMaster', () => true);
+          }
+
+          // Check for Combo King
+          checkAndUnlockAchievement('comboKing', () => player.combo >= 5);
+
+          // Check for Line Master
+          const totalLines = players.reduce((sum, p) => sum + p.lines, 0);
+          checkAndUnlockAchievement('lineMaster', () => totalLines >= 50);
+
+          if (rowsToClear.length >= 2) {
+            const attack = rowsToClear.length + Math.floor(Math.max(0, player.combo - 1) / 2);
+            sendGarbage(player, attack);
+          }
+
+          updateHUD(player);
+          return rowsToClear.length;
+        }
+
+        function addScore(player, points) {
+          const previousScore = player.score;
+          let finalPoints = points;
+          // Apply double score modifier
+          if (dailyModifierActive && dailyModifierIndex === 4) {
+            finalPoints = points * 2;
+          }
+          player.score += finalPoints;
+          const previousMilestone = Math.floor(previousScore / 1000);
+          const currentMilestone = Math.floor(player.score / 1000);
+          if (currentMilestone > previousMilestone) {
+            awardCoins((currentMilestone - previousMilestone) * 25, 'score milestone');
+          }
+          // Check achievements
+          checkAndUnlockAchievement('speedDemon', () => player.level >= 5);
+          checkAndUnlockAchievement('scoreVillain', () => player.score >= 25000);
+          updateHUD(player);
+          if (player.score >= MATCH_TARGET) {
+            finishMatch(player, `${player.name} wins on score!`);
+          }
+        }
+
+        function movePiece(player, dx, dy) {
+          if (!player.current || player.paused || player.gameOver) return false;
+          if (!collides(player.board, player.current.matrix, player.current.x + dx, player.current.y + dy)) {
+            player.current.x += dx;
+            player.current.y += dy;
+            return true;
+          }
+          return false;
+        }
+
+        function rotatePiece(player) {
+          if (!player.current || player.paused || player.gameOver) return;
+          const rotated = player.current.matrix[0].map((_, index) =>
+            player.current.matrix.map((row) => row[index]).reverse()
+          );
+          const kicks = [0, -1, 1, -2, 2];
+          for (const kick of kicks) {
+            if (!collides(player.board, rotated, player.current.x + kick, player.current.y)) {
+              player.current.matrix = rotated;
+              player.current.x += kick;
+              return;
+            }
+          }
+        }
+
+        function mergePiece(player) {
+          if (!player.current) return;
+          player.current.matrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+              if (!value) return;
+              const boardY = player.current.y + y;
+              const boardX = player.current.x + x;
+              if (boardY >= 0 && boardY < ROWS && boardX >= 0 && boardX < COLS) {
+                player.board[boardY][boardX] = player.current.color;
+              }
+            });
+          });
+          clearCompletedRows(player);
+          applyPendingGarbage(player);
+          spawnPiece(player);
+          updateHUD(player);
+        }
+
+        function hardDrop(player) {
+          if (!player.current || player.paused || player.gameOver) return;
+          let distance = 0;
+          while (!collides(player.board, player.current.matrix, player.current.x, player.current.y + 1)) {
+            player.current.y += 1;
+            distance += 1;
+          }
+          addScore(player, distance * 2);
+          mergePiece(player);
+          playTone({ frequency: 380, duration: 0.08, type: 'triangle', volume: 0.05, slideTo: 430 });
+        }
+
+        function holdCurrentPiece(player) {
+          if (!player.current || !player.canHold || player.paused || player.gameOver) return;
+          if (player.holdDisabled) {
+            showToast('Hold is disabled in this challenge', 'info');
+            return;
+          }
+          if (player.hold === null) {
+            player.hold = player.current.type;
+            spawnPiece(player);
+          } else {
+            const swapped = player.hold;
+            player.hold = player.current.type;
+            player.current = createPiece(swapped);
+            player.current.x = Math.floor((COLS - player.current.matrix[0].length) / 2);
+            player.current.y = -1;
+            if (collides(player.board, player.current.matrix, player.current.x, player.current.y)) {
+              endPlayerGame(player);
+            }
+          }
+          player.canHold = false;
+          updateHUD(player);
+          playTone({ frequency: 500, duration: 0.06, type: 'sawtooth', volume: 0.04, slideTo: 560 });
+        }
+
+        function endPlayerGame(player) {
+          if (player.gameOver) return;
+          player.gameOver = true;
+          player.running = false;
+          showToast(`${player.name} lost`, 'success');
+          playTone({ frequency: 180, duration: 0.25, type: 'sawtooth', volume: 0.05, slideTo: 80 });
+          if (game.mode === 'single') {
+            finishMatch(null, 'Run over');
+            return;
+          }
+          const opponent = getOpponent(player);
+          finishMatch(opponent, `${opponent.name} wins by KO!`);
+        }
+
+        function finishMatch(winner, message) {
+          if (!game.running) return;
+          if (game.mode === 'battle' && winner) {
+            awardCoins(100, 'match victory');
+            checkAndUnlockAchievement('battleWinner', () => true);
+          }
+          players.forEach((player) => saveHighScore(player));
+          players.forEach((entry) => {
+            entry.running = false;
+          });
+          game.running = false;
+          stopGameLoop();
+          ui.matchStatus.textContent = message;
+          showOverlay('Match Over', message, 'Play Again');
+          if (game.mode === 'single') {
+            openSubmission(player1.score);
+          }
+        }
+
+        function updateHUD(player) {
+          player.scoreEl.textContent = String(player.score);
+          player.bestEl.textContent = String(Math.max(getHighScore(player), player.score));
+          player.linesEl.textContent = String(player.lines);
+          player.levelEl.textContent = String(player.level);
+        }
+
+        function getGhostPiece(player) {
+          if (!player.current) return null;
+          const ghost = { ...player.current, matrix: cloneMatrix(player.current.matrix) };
+          while (!collides(player.board, ghost.matrix, ghost.x, ghost.y + 1)) {
+            ghost.y += 1;
+          }
+          return ghost;
+        }
+
+        function drawCell(ctx, x, y, color, size) {
+          if (!color || color === 0) {
+            ctx.fillStyle = '#07121f';
+            ctx.fillRect(x * size, y * size, size, size);
+            return;
+          }
+          if (color === 'garbage') {
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(x * size, y * size, size, size);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(x * size + 5, y * size + 5, size - 10, size - 10);
+            return;
+          }
+          ctx.fillStyle = color;
+          ctx.fillRect(x * size, y * size, size, size);
+          ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+          ctx.strokeRect(x * size + 0.5, y * size + 0.5, size - 1, size - 1);
+        }
+
+        function drawBoard(player) {
+          const ctx = player.ctx;
+          ctx.clearRect(0, 0, player.canvas.width, player.canvas.height);
+          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-bg').trim() || '#091427';
+          ctx.fillRect(0, 0, player.canvas.width, player.canvas.height);
+
+          for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+              drawCell(ctx, x, y, player.board[y][x] || 0, BLOCK);
+            }
+          }
+
+          if (player.current) {
+            const ghost = getGhostPiece(player);
+            if (ghost) {
+              ghost.matrix.forEach((row, rowIndex) => {
+                row.forEach((value, colIndex) => {
+                  if (!value) return;
+                  const drawX = ghost.x + colIndex;
+                  const drawY = ghost.y + rowIndex;
+                  if (drawY >= 0 && drawY < ROWS && drawX >= 0 && drawX < COLS) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+                    ctx.fillRect(drawX * BLOCK + 2, drawY * BLOCK + 2, BLOCK - 4, BLOCK - 4);
+                  }
+                });
+              });
+            }
+
+            player.current.matrix.forEach((row, rowIndex) => {
+              row.forEach((value, colIndex) => {
+                if (!value) return;
+                const drawX = player.current.x + colIndex;
+                const drawY = player.current.y + rowIndex;
+                if (drawY >= 0 && drawY < ROWS && drawX >= 0 && drawX < COLS) {
+                  drawCell(ctx, drawX, drawY, player.current.color, BLOCK);
+                }
+              });
+            });
+          }
+
+          ctx.strokeStyle = 'rgba(125, 211, 252, 0.12)';
+          for (let x = 0; x <= COLS; x++) {
+            ctx.beginPath();
+            ctx.moveTo(x * BLOCK, 0);
+            ctx.lineTo(x * BLOCK, player.canvas.height);
+            ctx.stroke();
+          }
+          for (let y = 0; y <= ROWS; y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * BLOCK);
+            ctx.lineTo(player.canvas.width, y * BLOCK);
+            ctx.stroke();
+          }
+        }
+
+        function updatePlayers(delta) {
+          players.forEach((player) => {
+            if (!player.running || player.paused || player.gameOver) return;
+            player.accumulator += delta;
+            if (player.accumulator >= player.dropInterval) {
+              player.accumulator = 0;
+              if (!movePiece(player, 0, 1)) {
+                mergePiece(player);
+              }
+            }
+            drawBoard(player);
+          });
+        }
+
+        function gameLoop(timestamp) {
+          if (!game.running) return;
+          const delta = timestamp - (game.lastTimestamp || timestamp);
+          game.lastTimestamp = timestamp;
+          updatePlayers(delta);
+          game.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function stopGameLoop() {
+          if (game.animationId) {
+            cancelAnimationFrame(game.animationId);
+            game.animationId = null;
+          }
+        }
+
+        function handleAction(playerId, action) {
+          const player = playerId === 'p1' ? player1 : player2;
+          if (!player.running || player.paused || player.gameOver) return;
+          switch (action) {
+            case 'left':
+              movePiece(player, -1, 0);
+              break;
+            case 'right':
+              movePiece(player, 1, 0);
+              break;
+            case 'down':
+              if (!movePiece(player, 0, 1)) mergePiece(player);
+              break;
+            case 'rotate':
+              rotatePiece(player);
+              break;
+            case 'drop':
+              hardDrop(player);
+              break;
+            case 'hold':
+              holdCurrentPiece(player);
+              break;
+            default:
+              break;
+          }
+        }
+
+        function bindKeyboard() {
+          document.addEventListener('keydown', (event) => {
+            if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+              return;
+            }
+            const lowerKey = event.key.toLowerCase();
+
+            if (lowerKey === 'm') {
+              toggleMute();
+              return;
+            }
+            if (lowerKey === 'p') {
+              togglePause();
+              return;
+            }
+
+            const p1Map = {
+              ArrowLeft: 'left',
+              ArrowRight: 'right',
+              ArrowUp: 'rotate',
+              ArrowDown: 'down',
+              q: 'rotate',
+              w: 'drop',
+              e: 'hold'
+            };
+
+            const p2Map = {
+              a: 'left',
+              d: 'right',
+              s: 'down',
+              r: 'rotate',
+              f: 'drop',
+              g: 'hold'
+            };
+
+            if (event.repeat) return;
+
+            const p1Action = p1Map[event.key.toLowerCase()] || p1Map[event.key];
+            const p2Action = p2Map[lowerKey];
+
+            if (p1Action) {
+              event.preventDefault();
+              handleAction('p1', p1Action);
+            }
+            if (p2Action) {
+              event.preventDefault();
+              handleAction('p2', p2Action);
+            }
+          });
+        }
+
+        function setupUI() {
+          ui.singlePlayerBtn.addEventListener('click', () => enterMode('single'));
+          ui.battleModeBtn.addEventListener('click', () => enterMode('battle'));
+          ui.dailyChallengeBtn.addEventListener('click', () => {
+            initializeDailyChallenge();
+            dailyModifierActive = true;
+            enterMode('daily');
+          });
+          ui.achievementsBtn.addEventListener('click', () => openAchievements());
+          ui.tutorialBtn.addEventListener('click', () => openTutorial());
+          ui.leaderboardBtn.addEventListener('click', () => openLeaderboard());
+          ui.closeLeaderboardBtn.addEventListener('click', () => closeLeaderboard());
+          ui.refreshLeaderboardBtn.addEventListener('click', () => refreshLeaderboard());
+          ui.leaderboardModal.addEventListener('click', (event) => {
+            if (event.target === ui.leaderboardModal) closeLeaderboard();
+          });
+          ui.submissionForm.addEventListener('submit', submitScore);
+          ui.skipSubmissionBtn.addEventListener('click', () => closeSubmission());
+          ui.submissionModal.addEventListener('click', (event) => {
+            if (event.target === ui.submissionModal) closeSubmission();
+          });
+          ui.startBtn.addEventListener('click', () => startMatch());
+          ui.pauseBtn.addEventListener('click', () => togglePause());
+          ui.exitBtn.addEventListener('click', () => returnToMenu());
+          ui.muteBtn.addEventListener('click', () => toggleMute());
+
+          ui.crtToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('crt-mode');
+            ui.crtToggleBtn.textContent = document.body.classList.contains('crt-mode') ? 'CRT On' : 'CRT Off';
+          });
+          ui.shopBtn.addEventListener('click', () => openShop());
+          ui.closeShopBtn.addEventListener('click', () => closeShop());
+          ui.supporterBtn.addEventListener('click', () => unlockAllAsSupporter());
+          ui.shopModal.addEventListener('click', (event) => {
+            if (event.target === ui.shopModal) closeShop();
+          });
+
+          ui.closeAchievementsBtn.addEventListener('click', () => closeAchievements());
+          ui.achievementsModal.addEventListener('click', (event) => {
+            if (event.target === ui.achievementsModal) closeAchievements();
+          });
+
+          ui.closeTutorialBtn.addEventListener('click', () => closeTutorial());
+          ui.tutorialModal.addEventListener('click', (event) => {
+            if (event.target === ui.tutorialModal) closeTutorial();
+          });
+
+          ui.seedApplyBtn.addEventListener('click', () => {
+            setSeed(ui.seedInput.value);
+            if (!game.running) startMatch();
+          });
+
+          ui.seedInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              setSeed(ui.seedInput.value);
+              if (!game.running) startMatch();
+            }
+          });
+
+          ui.volumeSlider.addEventListener('input', (event) => {
+            setVolume(Number(event.target.value) / 100);
+          });
+
+          ui.overlayBtn.addEventListener('click', () => {
+            if (players.some((player) => player.paused)) {
+              players.forEach((player) => {
+                player.paused = false;
+              });
+              hideOverlay();
+              return;
+            }
+            startMatch();
+          });
+          ui.overlayMenuBtn.addEventListener('click', () => returnToMenu());
+        }
+
+        function enterMode(mode) {
+          game.mode = mode;
+          game.running = false;
+          ui.mainMenu.classList.add('hidden');
+          ui.matchShell.classList.remove('hidden');
+          ui.seedControls.classList.remove('hidden');
+          ui.startBtn.classList.remove('hidden');
+          ui.pauseBtn.classList.remove('hidden');
+          ui.exitBtn.classList.remove('hidden');
+          player2.panel.classList.toggle('single-hidden', mode === 'single' || mode === 'daily');
+          ui.matchStatus.textContent = mode === 'single'
+            ? 'Single Player: reach 10,000 points'
+            : mode === 'daily'
+            ? `Daily Challenge: ${dailyModifierIcon} ${dailyModifierName}`
+            : `First to ${MATCH_TARGET.toLocaleString()} points wins`;
+          startMatch();
+        }
+
+        function returnToMenu() {
+          game.running = false;
+          stopGameLoop();
+          players.forEach((player) => {
+            player.running = false;
+            player.paused = false;
+          });
+          game.mode = 'menu';
+          dailyModifierActive = false;
+          ui.matchShell.classList.add('hidden');
+          ui.seedControls.classList.add('hidden');
+          ui.mainMenu.classList.remove('hidden');
+          ui.startBtn.classList.add('hidden');
+          ui.pauseBtn.classList.add('hidden');
+          ui.exitBtn.classList.add('hidden');
+          ui.overlay.classList.remove('visible');
+        }
+
+        function init() {
+          const params = new URLSearchParams(window.location.search);
+          setSeed(params.get('seed') || '12345');
+          setupUI();
+          bindKeyboard();
+          setVolume(0.8);
+          applyTheme(activeTheme);
+          updateCoinUI();
+
+          ui.overlayTitle.textContent = 'Neon Tetris';
+          ui.overlayText.textContent = 'Choose a mode from the main menu';
+          ui.overlayBtn.textContent = 'Start Game';
+        }
+
+        window.addEventListener('load', init);
+      })();
+    </script>
+  </body>
+</html>
