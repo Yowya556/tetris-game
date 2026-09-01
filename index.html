@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Neon Tetris Duel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -41,6 +41,8 @@
         box-shadow: 0 18px 60px rgba(2, 6, 23, 0.75);
         padding: 18px;
       }
+
+      #environmentCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; mix-blend-mode: screen; }
 
       .topbar {
         display: flex;
@@ -102,6 +104,31 @@
         font-size: 0.95rem;
       }
 
+      .alternate-mode-note { width: min(100%, 520px); margin: -8px 0 0; color: var(--muted); font-size: 0.8rem; }
+
+      .modifier-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: min(100%, 520px);
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .modifier-row select {
+        flex: 1;
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid rgba(125, 211, 252, 0.25);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text);
+      }
+      .ambient-row { width: min(100%, 520px); display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; }
+      .ambient-row select { flex: 1; min-width: 0; padding: 10px; border: 1px solid rgba(125, 211, 252, 0.25); border-radius: 8px; background: rgba(15, 23, 42, 0.9); color: var(--text); }
+      .replay-tools { width: min(100%, 520px); display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+      .replay-tools input { min-width: 0; padding: 10px; border: 1px solid rgba(125, 211, 252, 0.25); border-radius: 8px; background: rgba(15, 23, 42, 0.9); color: var(--text); }
+      .replay-tools button { padding-inline: 10px; }
+
       .daily-challenge-badge {
         display: inline-block;
         background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -123,6 +150,25 @@
         flex-wrap: wrap;
         color: var(--muted);
       }
+
+      .auth-panel {
+        width: min(100%, 520px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(125, 211, 252, 0.18);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.55);
+        text-align: left;
+      }
+      .auth-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+      .auth-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: rgba(148, 163, 184, 0.2); }
+      .auth-copy { min-width: 0; }
+      .auth-copy strong, .auth-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .auth-copy span { color: var(--muted); font-size: 0.78rem; }
+      .google-btn { background: #fff; color: #1f2937; white-space: nowrap; }
 
       .coin-count {
         color: #fbbf24;
@@ -171,6 +217,11 @@
       .shop-item p { margin: 3px 0 0; color: var(--muted); font-size: 0.82rem; }
       .shop-item button { white-space: nowrap; }
       .shop-item button[disabled] { cursor: default; opacity: 0.65; }
+      .shop-item .checkout-link { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #06111d; text-decoration: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+      .test-mode-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); font-size: 0.82rem; }
+      .test-mode-row input { accent-color: var(--primary); }
+      .paid-badge { color: #fbbf24; font-weight: 700; }
+      .background-preview { width: 42px; height: 28px; border: 1px solid rgba(255,255,255,0.2); border-radius: 5px; flex: 0 0 auto; }
       .shop-footer { margin-top: 18px; justify-content: flex-end; }
 
       .leaderboard-card,
@@ -195,6 +246,7 @@
       }
       .leaderboard-header h3,
       .submission-header h3 { margin: 0; color: var(--primary); }
+      .leaderboard-auth { margin: 16px 0; }
       .leaderboard-status { margin: 12px 0; color: var(--muted); font-size: 0.85rem; }
       .leaderboard-table { width: 100%; border-collapse: collapse; text-align: left; }
       .leaderboard-table th,
@@ -303,7 +355,28 @@
         border: 2px solid rgba(125, 211, 252, 0.25);
         border-radius: 14px;
         box-shadow: inset 0 0 18px rgba(125, 211, 252, 0.08);
+        will-change: transform;
       }
+
+      .profile-card {
+        width: min(94vw, 520px);
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+      .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+      .profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: rgba(148, 163, 184, 0.2); }
+      .profile-header h3 { margin: 0 0 4px; color: var(--primary); }
+      .profile-header p { margin: 0; color: var(--muted); }
+      .profile-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .profile-stat { padding: 12px; border: 1px solid rgba(125, 211, 252, 0.14); border-radius: 10px; background: rgba(15, 23, 42, 0.5); }
+      .profile-stat strong, .profile-stat span { display: block; }
+      .profile-stat strong { color: var(--primary); font-size: 1.25rem; }
+      .profile-stat span { color: var(--muted); font-size: 0.78rem; }
+      .profile-achievements { margin-top: 18px; color: var(--muted); }
+      .profile-footer { display: flex; justify-content: flex-end; margin-top: 18px; }
 
       .stats {
         display: grid;
@@ -569,6 +642,13 @@
     </style>
   </head>
   <body>
+    <canvas id="environmentCanvas" aria-hidden="true"></canvas>
+    <noscript style="display:grid;place-items:center;height:100vh;background:#0a1020;color:#e5eefb;text-align:center;padding:24px">
+      <div>
+        <h1 style="font-size:2em;margin-bottom:20px;color:#7dd3fc">JavaScript Required</h1>
+        <p style="font-size:1.1em;margin:0;opacity:0.8">This game requires JavaScript to be enabled. Please enable JavaScript in your browser settings and reload the page.</p>
+      </div>
+    </noscript>
     <div class="game-shell">
       <div class="topbar">
         <h1>Neon Tetris</h1>
@@ -590,12 +670,38 @@
       <section id="mainMenu" class="main-menu" aria-labelledby="menuTitle">
         <h2 id="menuTitle">Choose Your Run</h2>
         <p>Select a mode to begin.</p>
+        <div id="menuAuthPanel" class="auth-panel"></div>
+        <label class="modifier-row" for="matchModifier">Match modifier
+          <select id="matchModifier">
+            <option value="normal">Normal</option>
+            <option value="doubleSpeed">Double Speed</option>
+            <option value="garbageRain">Random Garbage Rain</option>
+            <option value="inverted">Inverted Controls</option>
+          </select>
+        </label>
+        <label class="ambient-row" for="ambientEffect">Ambient Effects
+          <select id="ambientEffect">
+            <option value="off">Off</option>
+            <option value="neonRain">Neon Rain</option>
+            <option value="embers">Floating Embers</option>
+            <option value="cyberFog">Cyber Fog / Particle Dust</option>
+          </select>
+        </label>
+        <div class="replay-tools">
+          <input id="replayInput" type="text" maxlength="12000" placeholder="Paste replay share string" aria-label="Replay share string" />
+          <button id="watchReplayBtn" type="button">Watch Replay</button>
+          <button id="copyReplayBtn" type="button">Copy Last Replay</button>
+        </div>
         <div class="menu-options">
           <button id="singlePlayerBtn" type="button">Single Player</button>
           <button id="battleModeBtn" type="button">2-Player Split-Screen Battle</button>
+          <button id="sprintModeBtn" type="button">40-Line Sprint Mode</button>
+          <button id="ultraModeBtn" type="button">2-Minute Ultra Mode</button>
+          <button id="bossRushBtn" type="button">Boss Rush</button>
           <button id="dailyChallengeBtn" type="button">Daily Challenge <span class="daily-challenge-badge">New</span></button>
           <button id="achievementsBtn" type="button">Achievements</button>
           <button id="leaderboardBtn" type="button">Global Leaderboard</button>
+          <button id="profileBtn" type="button">Player Profile</button>
           <button id="tutorialBtn" type="button">How to Play</button>
         </div>
         <div class="menu-footer">
@@ -664,6 +770,15 @@
         <div class="shop-section">
           <h4>Sound Packs</h4>
           <div id="soundShopList"></div>
+        </div>
+        <div class="shop-section">
+          <h4>Playfield Backgrounds</h4>
+          <div id="backgroundShopList"></div>
+        </div>
+        <div class="shop-section">
+          <h4>Premium Purchases</h4>
+          <div id="paidShopList"></div>
+          <label class="test-mode-row"><input id="purchaseTestMode" type="checkbox" /> Enable successful purchase test mode</label>
         </div>
         <div class="shop-footer">
           <button id="supporterBtn" type="button">Support Developer / Unlock All</button>
@@ -797,6 +912,7 @@
           <h3 id="leaderboardTitle">Global Leaderboard</h3>
           <button id="closeLeaderboardBtn" type="button">Close</button>
         </div>
+        <div id="leaderboardAuthPanel" class="auth-panel leaderboard-auth"></div>
         <div id="leaderboardStatus" class="leaderboard-status" aria-live="polite"></div>
         <table class="leaderboard-table">
           <thead><tr><th>Rank</th><th>Player Name</th><th>Score</th><th>Date</th></tr></thead>
@@ -810,6 +926,7 @@
       <form id="submissionForm" class="submission-card">
         <div class="submission-header"><h3 id="submissionTitle">Submit Your Score</h3></div>
         <p>Your score of <strong id="submissionScore">0</strong> can join the global board.</p>
+        <p id="submissionIdentity" class="hidden"></p>
         <label for="playerNameInput">Player name</label>
         <input id="playerNameInput" type="text" maxlength="24" autocomplete="nickname" required placeholder="Enter a name" />
         <div class="leaderboard-footer">
@@ -817,6 +934,21 @@
           <button type="submit">Submit Score</button>
         </div>
       </form>
+    </div>
+
+    <div id="profileModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <div class="profile-card">
+        <div class="profile-header">
+          <img id="profileAvatar" class="profile-avatar" alt="" />
+          <div><h3 id="profileTitle">Player Profile</h3><p id="profileName">Guest Player</p></div>
+        </div>
+        <div class="profile-stats">
+          <div class="profile-stat"><strong id="profileTotalScore">0</strong><span>Total Score</span></div>
+          <div class="profile-stat"><strong id="profileCoins">0</strong><span>Tetra-Coins</span></div>
+        </div>
+        <div class="profile-achievements">Achievements unlocked: <strong id="profileAchievements">0</strong></div>
+        <div class="profile-footer"><button id="closeProfileBtn" type="button">Close</button></div>
+      </div>
     </div>
 
     <script>
@@ -849,9 +981,15 @@
         const LOCAL_LEADERBOARD_KEY = 'neon-tetris-global-leaderboard-v1';
         const SUPABASE_URL = ''; // Add your Supabase project URL.
         const SUPABASE_ANON_KEY = ''; // Add your Supabase anon key.
-        const supabaseClient = SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase
-          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-          : null;
+        const supabaseClient = (() => {
+          try {
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !window.supabase) return null;
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          } catch (error) {
+            console.warn('Supabase initialization failed. Using localStorage only.', error);
+            return null;
+          }
+        })();
         const PROFILE_KEY = 'neon-tetris-profile-v1';
         const THEMES = {
           cyberpunk: {
@@ -883,6 +1021,40 @@
           arcade: { name: 'Arcade Classic', cost: 0 },
           synth: { name: 'Synthwave', cost: 100 },
           chip: { name: '8-Bit Chips', cost: 150 }
+        };
+        const PAID_PRODUCTS = {
+          coinPouch: {
+            name: 'Coin Pouch Bundle',
+            description: 'Instantly add 500 Tetra-Coins',
+            price: '$1.99',
+            checkoutUrl: '#'
+          },
+          megaVault: {
+            name: 'Mega Coin Vault',
+            description: 'Instantly add 2,500 Tetra-Coins',
+            price: '$7.99',
+            checkoutUrl: '#'
+          },
+          eliteThemePack: {
+            name: 'Exclusive Elite Theme Pack',
+            description: 'Unlock the rare Elite theme',
+            price: '$4.99',
+            checkoutUrl: '#'
+          }
+        };
+        const ELITE_THEME = {
+          name: 'Elite',
+          bg: '#17100a',
+          accent: '#fbbf24',
+          accentAlt: '#fb7185',
+          colors: { I: '#fbbf24', J: '#fb7185', L: '#f97316', O: '#fde047', S: '#34d399', T: '#f0abfc', Z: '#fb7185' }
+        };
+        const PLAYFIELD_BACKGROUNDS = {
+          minimalDark: { name: 'Minimalist Dark', description: 'Clean charcoal gradient', cost: 0, type: 'minimalDark' },
+          retroGrid: { name: 'Retro Grid', description: 'Glowing synthwave horizon', cost: 140, type: 'retroGrid' },
+          matrixRain: { name: 'Matrix Digital Rain', description: 'Subtle falling green code', cost: 180, type: 'matrixRain' },
+          starfield: { name: 'Deep Space Starfield', description: 'Slow-moving twinkling stars', cost: 220, type: 'starfield' },
+          minimalLight: { name: 'Minimalist Light', description: 'Soft graphite and silver gradient', cost: 100, type: 'minimalLight' }
         };
 
         const ACHIEVEMENTS = {
@@ -1002,18 +1174,38 @@
           mainMenu: document.getElementById('mainMenu'),
           singlePlayerBtn: document.getElementById('singlePlayerBtn'),
           battleModeBtn: document.getElementById('battleModeBtn'),
+          sprintModeBtn: document.getElementById('sprintModeBtn'),
+          ultraModeBtn: document.getElementById('ultraModeBtn'),
+          bossRushBtn: document.getElementById('bossRushBtn'),
+          replayInput: document.getElementById('replayInput'),
+          watchReplayBtn: document.getElementById('watchReplayBtn'),
+          copyReplayBtn: document.getElementById('copyReplayBtn'),
           dailyChallengeBtn: document.getElementById('dailyChallengeBtn'),
           achievementsBtn: document.getElementById('achievementsBtn'),
           tutorialBtn: document.getElementById('tutorialBtn'),
+          profileBtn: document.getElementById('profileBtn'),
+          profileModal: document.getElementById('profileModal'),
+          profileAvatar: document.getElementById('profileAvatar'),
+          profileName: document.getElementById('profileName'),
+          profileTotalScore: document.getElementById('profileTotalScore'),
+          profileCoins: document.getElementById('profileCoins'),
+          profileAchievements: document.getElementById('profileAchievements'),
+          closeProfileBtn: document.getElementById('closeProfileBtn'),
+          matchModifier: document.getElementById('matchModifier'),
+          ambientEffect: document.getElementById('ambientEffect'),
+          environmentCanvas: document.getElementById('environmentCanvas'),
           leaderboardBtn: document.getElementById('leaderboardBtn'),
           leaderboardModal: document.getElementById('leaderboardModal'),
           leaderboardBody: document.getElementById('leaderboardBody'),
           leaderboardStatus: document.getElementById('leaderboardStatus'),
           closeLeaderboardBtn: document.getElementById('closeLeaderboardBtn'),
           refreshLeaderboardBtn: document.getElementById('refreshLeaderboardBtn'),
+          menuAuthPanel: document.getElementById('menuAuthPanel'),
+          leaderboardAuthPanel: document.getElementById('leaderboardAuthPanel'),
           submissionModal: document.getElementById('submissionModal'),
           submissionForm: document.getElementById('submissionForm'),
           submissionScore: document.getElementById('submissionScore'),
+          submissionIdentity: document.getElementById('submissionIdentity'),
           playerNameInput: document.getElementById('playerNameInput'),
           skipSubmissionBtn: document.getElementById('skipSubmissionBtn'),
           matchShell: document.getElementById('matchShell'),
@@ -1034,6 +1226,9 @@
           shopCoinBalance: document.getElementById('shopCoinBalance'),
           themeShopList: document.getElementById('themeShopList'),
           soundShopList: document.getElementById('soundShopList'),
+          backgroundShopList: document.getElementById('backgroundShopList'),
+          paidShopList: document.getElementById('paidShopList'),
+          purchaseTestMode: document.getElementById('purchaseTestMode'),
           supporterBtn: document.getElementById('supporterBtn'),
           closeShopBtn: document.getElementById('closeShopBtn'),
           achievementsModal: document.getElementById('achievementsModal'),
@@ -1045,18 +1240,126 @@
         const game = {
           seed: '12345',
           mode: 'menu',
+          modifier: 'normal',
+          elapsedMs: 0,
+          bossTimer: 0,
+          bossModifier: 'normal',
+          replayLog: [],
+          replayPlayback: false,
           running: false,
           lastTimestamp: 0,
           animationId: null
         };
 
         const profile = loadProfile();
+        if (profile.paidUnlocks.eliteThemePack) {
+          THEMES.elite = ELITE_THEME;
+        }
         let activeTheme = profile.activeTheme;
+        let authUser = null;
+        let ambientEffect = (() => {
+          try {
+            return localStorage.getItem('neon-tetris-ambient-effect') || 'off';
+          } catch (error) {
+            console.warn('localStorage access denied. Defaulting to no ambient effects.');
+            return 'off';
+          }
+        })();
+        let environmentFrame = 0;
 
         let audioCtx = null;
         let masterGain = null;
+        let musicGain = null;
+        let musicTimer = null;
+        let musicStep = 0;
         let masterVolume = 0.8;
-        let muted = false;
+        let muted = (() => {
+          try {
+            return localStorage.getItem('neon-tetris-muted') === 'true';
+          } catch (error) {
+            return false;
+          }
+        })();
+
+        function getAuthDisplayName(user) {
+          return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'Google player';
+        }
+
+        function getAuthAvatar(user) {
+          return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '';
+        }
+
+        function renderAuthPanel(panel) {
+          panel.replaceChildren();
+          const identity = document.createElement('div');
+          identity.className = 'auth-identity';
+          if (authUser) {
+            const avatar = document.createElement('img');
+            avatar.className = 'auth-avatar';
+            avatar.alt = '';
+            avatar.src = getAuthAvatar(authUser);
+            identity.appendChild(avatar);
+            const copy = document.createElement('div');
+            copy.className = 'auth-copy';
+            const name = document.createElement('strong');
+            name.textContent = getAuthDisplayName(authUser);
+            const account = document.createElement('span');
+            account.textContent = 'Google account connected';
+            copy.append(name, account);
+            identity.appendChild(copy);
+          } else {
+            const copy = document.createElement('div');
+            copy.className = 'auth-copy';
+            const name = document.createElement('strong');
+            name.textContent = 'Play as a guest or verify your scores';
+            const account = document.createElement('span');
+            account.textContent = supabaseClient ? 'Sign in to use your Google identity' : 'Configure Supabase to enable Google Sign-In';
+            copy.append(name, account);
+            identity.appendChild(copy);
+          }
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'google-btn';
+          button.textContent = authUser ? 'Sign Out' : 'Sign in with Google';
+          button.disabled = !authUser && !supabaseClient;
+          button.addEventListener('click', () => authUser ? signOut() : signInWithGoogle());
+          panel.append(identity, button);
+        }
+
+        function renderAuthUI() {
+          renderAuthPanel(ui.menuAuthPanel);
+          renderAuthPanel(ui.leaderboardAuthPanel);
+        }
+
+        async function signInWithGoogle() {
+          if (!supabaseClient) {
+            showToast('Add Supabase credentials to enable Google Sign-In', 'info');
+            return;
+          }
+          const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.href }
+          });
+          if (error) showToast(`Google Sign-In failed: ${error.message}`, 'info');
+        }
+
+        async function signOut() {
+          const { error } = await supabaseClient.auth.signOut();
+          if (error) showToast(`Sign out failed: ${error.message}`, 'info');
+        }
+
+        function initializeAuth() {
+          renderAuthUI();
+          if (!supabaseClient) return;
+          supabaseClient.auth.getSession().then(({ data }) => {
+            authUser = data.session?.user || null;
+            renderAuthUI();
+          });
+          supabaseClient.auth.onAuthStateChange((_event, session) => {
+            authUser = session?.user || null;
+            renderAuthUI();
+          });
+        }
 
         function hashString(str) {
           let hash = 2166136261 >>> 0;
@@ -1087,16 +1390,21 @@
         function loadProfile() {
           try {
             const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+            const paidUnlocks = { ...(stored.paidUnlocks || {}) };
             return {
               coins: Number.isFinite(stored.coins) ? Math.max(0, stored.coins) : 0,
-              activeTheme: THEMES[stored.activeTheme] ? stored.activeTheme : 'cyberpunk',
+              totalScore: Number.isFinite(stored.totalScore) ? Math.max(0, stored.totalScore) : 0,
+              activeTheme: THEMES[stored.activeTheme] || (stored.activeTheme === 'elite' && paidUnlocks.eliteThemePack) ? stored.activeTheme : 'cyberpunk',
               activeSound: SOUND_PACKS[stored.activeSound] ? stored.activeSound : 'arcade',
               themes: { cyberpunk: true, ...(stored.themes || {}) },
               sounds: { arcade: true, ...(stored.sounds || {}) },
+              backgrounds: { minimalDark: true, ...(stored.backgrounds || {}) },
+              activeBackground: PLAYFIELD_BACKGROUNDS[stored.activeBackground] ? stored.activeBackground : 'minimalDark',
+              paidUnlocks,
               supporter: stored.supporter === true
             };
           } catch (error) {
-            return { coins: 0, activeTheme: 'cyberpunk', activeSound: 'arcade', themes: { cyberpunk: true }, sounds: { arcade: true }, supporter: false };
+            return { coins: 0, totalScore: 0, activeTheme: 'cyberpunk', activeSound: 'arcade', themes: { cyberpunk: true }, sounds: { arcade: true }, backgrounds: { minimalDark: true }, activeBackground: 'minimalDark', paidUnlocks: {}, supporter: false };
           }
         }
 
@@ -1177,7 +1485,7 @@
         }
 
         function applyTheme(themeId) {
-          const theme = THEMES[themeId] || THEMES.cyberpunk;
+          const theme = THEMES[themeId] || (themeId === 'elite' ? ELITE_THEME : THEMES.cyberpunk);
           activeTheme = themeId;
           Object.assign(COLORS, theme.colors);
           document.documentElement.style.setProperty('--primary', theme.accent);
@@ -1208,14 +1516,18 @@
             const action = document.createElement('button');
             action.type = 'button';
             if (owned[id]) {
-              const selected = kind === 'theme' ? activeTheme === id : profile.activeSound === id;
+              const selected = kind === 'theme' ? activeTheme === id : kind === 'sound' ? profile.activeSound === id : profile.activeBackground === id;
               action.textContent = selected ? 'Selected' : 'Use';
               action.disabled = selected;
               action.addEventListener('click', () => {
                 if (kind === 'theme') applyTheme(id);
-                else {
+                else if (kind === 'sound') {
                   profile.activeSound = id;
                   saveProfile();
+                } else {
+                  profile.activeBackground = id;
+                  saveProfile();
+                  players.forEach((player) => drawBoard(player));
                 }
                 renderShop();
               });
@@ -1232,8 +1544,64 @@
           updateCoinUI();
           renderShopList(ui.themeShopList, THEMES, profile.themes, 'theme');
           renderShopList(ui.soundShopList, SOUND_PACKS, profile.sounds, 'sound');
+          renderShopList(ui.backgroundShopList, PLAYFIELD_BACKGROUNDS, profile.backgrounds, 'background');
+          renderPaidShop();
+          ui.purchaseTestMode.checked = (() => {
+          try {
+            return localStorage.getItem('neon-tetris-purchase-test-mode') === 'true';
+          } catch (error) {
+            return false;
+          }
+        })();
           ui.supporterBtn.textContent = profile.supporter ? 'Supporter Pack Unlocked' : 'Support Developer / Unlock All';
           ui.supporterBtn.disabled = profile.supporter;
+        }
+
+        function renderPaidShop() {
+          ui.paidShopList.replaceChildren();
+          Object.entries(PAID_PRODUCTS).forEach(([id, product]) => {
+            const row = document.createElement('div');
+            row.className = 'shop-item';
+            const info = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = product.name;
+            const description = document.createElement('p');
+            description.textContent = product.description;
+            info.append(title, description);
+            const action = document.createElement('a');
+            action.className = 'checkout-link';
+            action.textContent = profile.paidUnlocks[id] ? 'Purchased' : `${product.price} Checkout`;
+            action.href = '#';
+            if (profile.paidUnlocks[id]) {
+              action.setAttribute('aria-disabled', 'true');
+              action.addEventListener('click', (event) => event.preventDefault());
+            } else {
+              action.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (ui.purchaseTestMode.checked) {
+                  completeTestPurchase(id);
+                } else {
+                  showToast('Shop coming soon! Payment links will be available in the next update.', 'info');
+                }
+              });
+            }
+            row.append(info, action);
+            ui.paidShopList.appendChild(row);
+          });
+        }
+
+        function completeTestPurchase(productId) {
+          profile.paidUnlocks[productId] = true;
+          if (productId === 'coinPouch') profile.coins += 500;
+          if (productId === 'megaVault') profile.coins += 2500;
+          if (productId === 'eliteThemePack') {
+            profile.themes.elite = true;
+            THEMES.elite = ELITE_THEME;
+          }
+          saveProfile();
+          updateCoinUI();
+          renderShop();
+          showToast(`${PAID_PRODUCTS[productId].name} unlocked in test mode`, 'success');
         }
 
         function purchaseItem(id, item, kind) {
@@ -1242,7 +1610,8 @@
             return;
           }
           profile.coins -= item.cost;
-          profile[kind === 'theme' ? 'themes' : 'sounds'][id] = true;
+          const ownershipKey = kind === 'theme' ? 'themes' : kind === 'sound' ? 'sounds' : 'backgrounds';
+          profile[ownershipKey][id] = true;
           saveProfile();
           updateCoinUI();
           renderShop();
@@ -1253,6 +1622,7 @@
           profile.supporter = true;
           Object.keys(THEMES).forEach((id) => { profile.themes[id] = true; });
           Object.keys(SOUND_PACKS).forEach((id) => { profile.sounds[id] = true; });
+          Object.keys(PLAYFIELD_BACKGROUNDS).forEach((id) => { profile.backgrounds[id] = true; });
           saveProfile();
           renderShop();
           showToast('Thank you! All cosmetics unlocked.', 'success');
@@ -1317,6 +1687,26 @@
           ui.tutorialModal.classList.add('hidden');
         }
 
+        function openProfile() {
+          const fallbackName = (() => {
+          try {
+            return localStorage.getItem('neon-tetris-player-name') || 'Guest Player';
+          } catch (error) {
+            return 'Guest Player';
+          }
+        })();
+          ui.profileName.textContent = authUser ? getAuthDisplayName(authUser) : fallbackName;
+          ui.profileAvatar.src = authUser ? getAuthAvatar(authUser) : '';
+          ui.profileTotalScore.textContent = profile.totalScore.toLocaleString();
+          ui.profileCoins.textContent = profile.coins.toLocaleString();
+          ui.profileAchievements.textContent = String(Object.keys(loadAchievements()).length);
+          ui.profileModal.classList.remove('hidden');
+        }
+
+        function closeProfile() {
+          ui.profileModal.classList.add('hidden');
+        }
+
         function createBoard() {
           return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
         }
@@ -1363,6 +1753,10 @@
             gameOver: false,
             combo: 0,
             pendingGarbage: 0,
+            garbageTimer: 0,
+            particles: [],
+            shakeUntil: 0,
+            floatingText: [],
             milestone: 0,
             rng: makeRng('12345')
           };
@@ -1481,9 +1875,22 @@
 
         function openSubmission(score) {
           ui.submissionScore.textContent = score.toLocaleString();
-          ui.playerNameInput.value = localStorage.getItem('neon-tetris-player-name') || '';
+          const nameLabel = ui.playerNameInput.previousElementSibling;
+          const signedInName = authUser ? getAuthDisplayName(authUser) : '';
+          ui.submissionIdentity.classList.toggle('hidden', !authUser);
+          ui.submissionIdentity.textContent = authUser ? `Submitting as ${signedInName} (verified Google account)` : '';
+          ui.playerNameInput.classList.toggle('hidden', Boolean(authUser));
+          nameLabel.classList.toggle('hidden', Boolean(authUser));
+          ui.playerNameInput.required = !authUser;
+          ui.playerNameInput.value = authUser ? signedInName : (() => {
+            try {
+              return localStorage.getItem('neon-tetris-player-name') || '';
+            } catch (error) {
+              return '';
+            }
+          })();
           ui.submissionModal.classList.remove('hidden');
-          ui.playerNameInput.focus();
+          if (!authUser) ui.playerNameInput.focus();
         }
 
         function closeSubmission() {
@@ -1492,11 +1899,22 @@
 
         async function submitScore(event) {
           event.preventDefault();
-          const playerName = ui.playerNameInput.value.trim().slice(0, 24);
+          const playerName = (authUser ? getAuthDisplayName(authUser) : ui.playerNameInput.value).trim().slice(0, 24);
           const score = Number(ui.submissionScore.textContent.replace(/,/g, ''));
           if (!playerName || !Number.isFinite(score)) return;
-          localStorage.setItem('neon-tetris-player-name', playerName);
-          const entry = { player_name: playerName, score: Math.floor(score), created_at: new Date().toISOString() };
+          if (!authUser) {
+            try {
+              localStorage.setItem('neon-tetris-player-name', playerName);
+            } catch (error) {
+              console.warn('Could not save player name.');
+            }
+          }
+          const entry = {
+            player_name: playerName,
+            score: Math.floor(score),
+            created_at: new Date().toISOString(),
+            ...(authUser ? { user_id: authUser.id } : {})
+          };
           let submittedRemotely = false;
           if (supabaseClient) {
             try {
@@ -1533,19 +1951,62 @@
           return best;
         }
 
+        function formatTime(milliseconds) {
+          const minutes = Math.floor(milliseconds / 60000);
+          const seconds = Math.floor(milliseconds / 1000) % 60;
+          const millis = Math.floor(milliseconds % 1000);
+          return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+        }
+
+        function saveSprintBest(milliseconds) {
+          const key = 'neon-tetris-sprint-best-v1';
+          try {
+            const previous = Number(localStorage.getItem(key));
+            if (!Number.isFinite(previous) || milliseconds < previous) {
+              localStorage.setItem(key, String(Math.floor(milliseconds)));
+              showToast(`New Sprint best: ${formatTime(milliseconds)}`, 'success');
+            }
+          } catch (error) {
+            console.warn('Could not record sprint best time.', error);
+          }
+        }
+
         function ensureAudioContext() {
           if (!audioCtx) {
             const AudioCtor = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtor) return null;
-            audioCtx = new AudioCtor();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = muted ? 0 : masterVolume;
-            masterGain.connect(audioCtx.destination);
+            try {
+              audioCtx = new AudioCtor();
+              masterGain = audioCtx.createGain();
+              masterGain.gain.value = muted ? 0 : masterVolume;
+              masterGain.connect(audioCtx.destination);
+              musicGain = audioCtx.createGain();
+              musicGain.gain.value = 0.14;
+              musicGain.connect(masterGain);
+            } catch (error) {
+              console.warn('Web Audio API initialization failed.', error);
+              return null;
+            }
           }
-          if (audioCtx.state === 'suspended' && !muted) {
-            audioCtx.resume();
+          if (audioCtx && audioCtx.state === 'suspended' && !muted) {
+            try {
+              audioCtx.resume();
+            } catch (error) {
+              console.warn('AudioContext resume failed.', error);
+            }
           }
           return audioCtx;
+        }
+
+        function unlockAudioContext() {
+          const ctx = ensureAudioContext();
+          if (ctx && ctx.state === 'suspended') {
+            try {
+              ctx.resume().catch(err => console.warn('AudioContext resume deferred.'));
+            } catch (error) {
+              console.warn('AudioContext unlock failed.', error);
+            }
+          }
         }
 
         function playTone({ frequency = 220, duration = 0.08, type = 'square', volume = 0.06, delay = 0, slideTo = null }) {
@@ -1568,6 +2029,47 @@
           osc.stop(startAt + duration + 0.03);
         }
 
+        const MUSIC_SEQUENCE = [
+          [659, 0.5], [784, 0.5], [880, 1], [784, 0.5], [659, 0.5], [523, 1],
+          [587, 0.5], [659, 0.5], [784, 1], [659, 0.5], [587, 0.5], [523, 1]
+        ];
+
+        function scheduleMusicNote() {
+          if (!audioCtx || !musicGain || muted) return;
+          const [frequency, length] = MUSIC_SEQUENCE[musicStep % MUSIC_SEQUENCE.length];
+          const level = Math.max(player1.level, player2.level);
+          const bpm = Math.min(190, 108 + (level - 1) * 7);
+          const beatSeconds = 60 / bpm;
+          const duration = beatSeconds * length * 0.82;
+          const oscillator = audioCtx.createOscillator();
+          const noteGain = audioCtx.createGain();
+          oscillator.type = musicStep % 4 === 3 ? 'triangle' : 'square';
+          oscillator.frequency.value = frequency;
+          noteGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+          noteGain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.015);
+          noteGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+          oscillator.connect(noteGain);
+          noteGain.connect(musicGain);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + duration + 0.02);
+          musicStep += 1;
+          clearTimeout(musicTimer);
+          musicTimer = setTimeout(scheduleMusicNote, beatSeconds * 1000 * 0.5);
+        }
+
+        function startMusic() {
+          const context = ensureAudioContext();
+          if (!context || muted) return;
+          clearTimeout(musicTimer);
+          musicStep = 0;
+          scheduleMusicNote();
+        }
+
+        function stopMusic() {
+          clearTimeout(musicTimer);
+          musicTimer = null;
+        }
+
         function showToast(message, tone = 'info') {
           const toast = document.createElement('div');
           toast.className = `toast ${tone}`;
@@ -1580,6 +2082,80 @@
           }, 2200);
         }
 
+        const environmentParticles = Array.from({ length: 90 }, (_, index) => ({
+          x: (index * 83) % 1000,
+          y: (index * 137) % 700,
+          speed: 0.35 + (index % 7) * 0.08,
+          size: 1 + (index % 3),
+          phase: index * 1.7
+        }));
+
+        function resizeEnvironmentCanvas() {
+          const canvas = ui.environmentCanvas;
+          const scale = Math.min(window.devicePixelRatio || 1, 2);
+          canvas.width = Math.floor(window.innerWidth * scale);
+          canvas.height = Math.floor(window.innerHeight * scale);
+          canvas.getContext('2d').setTransform(scale, 0, 0, scale, 0, 0);
+        }
+
+        function drawEnvironment(time) {
+          const canvas = ui.environmentCanvas;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          if (ambientEffect === 'off' || ui.matchShell.classList.contains('hidden')) return;
+          const level = Math.min(10, Math.max(1, Math.max(player1.level, player2.level)));
+          const intensity = 0.45 + level * 0.08;
+          const width = window.innerWidth;
+          const height = window.innerHeight;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          if (ambientEffect === 'neonRain') {
+            ctx.strokeStyle = `rgba(56, 189, 248, ${0.18 * intensity})`;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 7;
+            ctx.lineWidth = 1;
+            environmentParticles.slice(0, Math.floor(34 + level * 4)).forEach((particle) => {
+              const x = (particle.x / 1000) * width;
+              const y = ((particle.y + time * particle.speed * (0.8 + level * 0.12)) % (height + 80)) - 40;
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x - 16, y + 32 + level * 1.5);
+              ctx.stroke();
+            });
+          } else if (ambientEffect === 'embers') {
+            environmentParticles.slice(0, Math.floor(22 + level * 3)).forEach((particle) => {
+              const x = (particle.x / 1000) * width + Math.sin(time * 0.001 + particle.phase) * 18;
+              const y = height - ((particle.y + time * particle.speed * (0.65 + level * 0.1)) % (height + 50));
+              const color = particle.phase % 2 > 1 ? '#c084fc' : '#fb923c';
+              ctx.globalAlpha = 0.18 + ((Math.sin(time * 0.003 + particle.phase) + 1) * 0.12) * intensity;
+              ctx.fillStyle = color;
+              ctx.shadowColor = color;
+              ctx.shadowBlur = 10;
+              ctx.beginPath();
+              ctx.arc(x, y, particle.size + level * 0.12, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          } else if (ambientEffect === 'cyberFog') {
+            environmentParticles.slice(0, Math.floor(36 + level * 4)).forEach((particle) => {
+              const x = (particle.x / 1000) * width + Math.sin(time * 0.0004 + particle.phase) * 35;
+              const y = (particle.y / 700) * height + Math.cos(time * 0.0005 + particle.phase) * 25;
+              ctx.globalAlpha = 0.08 * intensity;
+              ctx.fillStyle = '#a5b4fc';
+              ctx.shadowColor = '#7dd3fc';
+              ctx.shadowBlur = 16;
+              ctx.beginPath();
+              ctx.arc(x, y, 2 + particle.size, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+
+        function environmentLoop(time) {
+          drawEnvironment(time);
+          requestAnimationFrame(environmentLoop);
+        }
+
         function setVolume(nextVolume) {
           masterVolume = Math.min(1, Math.max(0, nextVolume));
           muted = masterVolume === 0;
@@ -1587,10 +2163,20 @@
             masterGain.gain.setTargetAtTime(muted ? 0 : masterVolume, audioCtx.currentTime, 0.05);
           }
           ui.volumeSlider.value = String(Math.round(masterVolume * 100));
+          ui.muteBtn.textContent = muted ? 'Unmute' : 'Mute';
         }
 
         function toggleMute() {
-          setVolume(muted ? 0.8 : 0);
+          muted = !muted;
+          setVolume(muted ? 0 : 0.8);
+          ui.muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+          try {
+            localStorage.setItem('neon-tetris-muted', String(muted));
+          } catch (error) {
+            console.warn('Could not save mute state to localStorage.');
+          }
+          if (muted) stopMusic();
+          else if (game.running) startMusic();
         }
 
         function randomPieceType(rng) {
@@ -1640,9 +2226,14 @@
           player.lines = 0;
           player.combo = 0;
           player.pendingGarbage = 0;
+          player.garbageTimer = 0;
+          player.particles = [];
+          player.shakeUntil = 0;
+          player.floatingText = [];
           player.milestone = 0;
           player.level = 1;
           player.dropInterval = 700;
+          if (game.modifier === 'doubleSpeed') player.dropInterval = 350;
           player.accumulator = 0;
           player.running = true;
           player.paused = false;
@@ -1664,13 +2255,75 @@
           ui.overlay.classList.add('visible');
         }
 
+        function encodeReplay(log) {
+          const actions = log.map((entry) => [entry.time, entry.playerId === 'p2' ? 2 : 1, entry.action]);
+          return btoa(JSON.stringify({ seed: game.seed, actions }));
+        }
+
+        function decodeReplay(value) {
+          try {
+            const replay = JSON.parse(atob(value.trim()));
+            if (!replay || !Array.isArray(replay.actions)) throw new Error('Invalid replay');
+            replay.actions = replay.actions.map((entry) => ({ time: Number(entry[0]) || 0, playerId: entry[1] === 2 ? 'p2' : 'p1', action: entry[2] }));
+            return replay;
+          } catch (error) {
+            showToast('Invalid replay share string', 'info');
+            return null;
+          }
+        }
+
+        async function copyReplay() {
+          const replay = (() => {
+            try {
+              return localStorage.getItem('neon-tetris-last-replay-v1');
+            } catch (error) {
+              return null;
+            }
+          })();
+          if (!replay) {
+            showToast('Finish a run before copying a replay', 'info');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(replay);
+            showToast('Replay share string copied', 'success');
+          } catch (error) {
+            ui.replayInput.value = replay;
+            ui.replayInput.select();
+            showToast('Replay ready to copy from the text field', 'info');
+          }
+        }
+
+        function watchReplay() {
+          const replay = decodeReplay(ui.replayInput.value);
+          if (!replay) return;
+          game.replayPlayback = true;
+          setSeed(replay.seed || '12345');
+          enterMode('single');
+          replay.actions.forEach((entry) => {
+            setTimeout(() => handleAction(entry.playerId || 'p1', entry.action, true), entry.time || 0);
+          });
+          setTimeout(() => { game.replayPlayback = false; }, (replay.actions.at(-1)?.time || 0) + 1000);
+        }
+
         function startMatch() {
           if (game.mode === 'menu') return;
+          game.modifier = ui.matchModifier.value;
+          game.elapsedMs = 0;
+          game.bossTimer = 0;
+          game.bossModifier = 'normal';
+          if (!game.replayPlayback) game.replayLog = [];
           game.running = false;
           stopGameLoop();
           game.running = true;
           game.lastTimestamp = performance.now();
-          ui.matchStatus.textContent = game.mode === 'single'
+          ui.matchStatus.textContent = game.mode === 'boss'
+            ? 'Boss Rush: environmental shift in 30.000s'
+            : game.mode === 'sprint'
+            ? 'Sprint: 00:00.000 / 40 lines'
+            : game.mode === 'ultra'
+            ? 'Ultra: 02:00.000 remaining'
+            : game.mode === 'single'
             ? `Single Player: reach ${MATCH_TARGET.toLocaleString()} points`
             : game.mode === 'daily'
             ? `Daily Challenge: ${dailyModifierIcon} ${dailyModifierName} - reach ${MATCH_TARGET.toLocaleString()} points`
@@ -1683,13 +2336,14 @@
           if (game.mode === 'daily') {
             applyDailyModifier(players);
           }
-          if (game.mode === 'single' || game.mode === 'daily') {
+          if (game.mode !== 'battle') {
             player2.running = false;
             player2.current = null;
             drawBoard(player2);
             updateHUD(player2);
           }
           hideOverlay();
+          startMusic();
           if (game.animationId) {
             cancelAnimationFrame(game.animationId);
           }
@@ -1705,8 +2359,10 @@
             }
           });
           if (shouldPause) {
+            stopMusic();
             showOverlay('Paused', 'Duel paused', 'Resume');
           } else {
+            startMusic();
             hideOverlay();
           }
         }
@@ -1757,6 +2413,9 @@
             return 0;
           }
 
+          spawnParticles(player, rowsToClear.length * 10, player.canvas.width / 2, (ROWS - 1) * BLOCK);
+          player.shakeUntil = performance.now() + Math.min(420, 140 + rowsToClear.length * 55);
+
           rowsToClear.forEach((rowIndex) => {
             player.board.splice(rowIndex, 1);
             player.board.unshift(Array(COLS).fill(0));
@@ -1765,6 +2424,9 @@
           player.lines += rowsToClear.length;
           awardCoins(rowsToClear.length * 5, `${rowsToClear.length} line${rowsToClear.length === 1 ? '' : 's'}`);
           player.combo += 1;
+          const clearNames = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS'];
+          announce(player, clearNames[rowsToClear.length] || 'CLEAR', rowsToClear.length >= 4 ? '#fbbf24' : '#38bdf8');
+          if (player.combo >= 2) announce(player, `COMBO x${player.combo}`, '#f472b6');
           player.level = Math.floor(player.lines / 10) + 1;
           const baseScore = [0, 100, 300, 500, 800][rowsToClear.length] * player.level * 10;
           const comboBonus = Math.max(0, player.combo - 1) * 50 * player.level;
@@ -1803,6 +2465,8 @@
             finalPoints = points * 2;
           }
           player.score += finalPoints;
+          profile.totalScore += finalPoints;
+          saveProfile();
           const previousMilestone = Math.floor(previousScore / 1000);
           const currentMilestone = Math.floor(player.score / 1000);
           if (currentMilestone > previousMilestone) {
@@ -1812,7 +2476,7 @@
           checkAndUnlockAchievement('speedDemon', () => player.level >= 5);
           checkAndUnlockAchievement('scoreVillain', () => player.score >= 25000);
           updateHUD(player);
-          if (player.score >= MATCH_TARGET) {
+          if (player.score >= MATCH_TARGET && !['sprint', 'ultra'].includes(game.mode)) {
             finishMatch(player, `${player.name} wins on score!`);
           }
         }
@@ -1862,12 +2526,17 @@
 
         function hardDrop(player) {
           if (!player.current || player.paused || player.gameOver) return;
+          const dropX = (player.current.x + player.current.matrix[0].length / 2) * BLOCK;
+          const dropY = Math.max(0, player.current.y) * BLOCK;
           let distance = 0;
           while (!collides(player.board, player.current.matrix, player.current.x, player.current.y + 1)) {
             player.current.y += 1;
             distance += 1;
           }
           addScore(player, distance * 2);
+          if (distance >= 8) announce(player, 'HARD DROP', '#4ade80');
+          spawnParticles(player, Math.min(24, 6 + Math.floor(distance / 2)), dropX, dropY);
+          player.shakeUntil = performance.now() + 110;
           mergePiece(player);
           playTone({ frequency: 380, duration: 0.08, type: 'triangle', volume: 0.05, slideTo: 430 });
         }
@@ -1924,6 +2593,14 @@
           stopGameLoop();
           ui.matchStatus.textContent = message;
           showOverlay('Match Over', message, 'Play Again');
+          stopMusic();
+          if (!game.replayPlayback && game.replayLog.length) {
+            try {
+              localStorage.setItem('neon-tetris-last-replay-v1', encodeReplay(game.replayLog));
+            } catch (error) {
+              console.warn('Could not save replay.');
+            }
+          }
           if (game.mode === 'single') {
             openSubmission(player1.score);
           }
@@ -1947,8 +2624,6 @@
 
         function drawCell(ctx, x, y, color, size) {
           if (!color || color === 0) {
-            ctx.fillStyle = '#07121f';
-            ctx.fillRect(x * size, y * size, size, size);
             return;
           }
           if (color === 'garbage') {
@@ -1964,11 +2639,144 @@
           ctx.strokeRect(x * size + 0.5, y * size + 0.5, size - 1, size - 1);
         }
 
+        function spawnParticles(player, count, originX, originY) {
+          for (let index = 0; index < count; index++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1.5 + Math.random() * 4;
+            player.particles.push({
+              x: originX,
+              y: originY,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 2,
+              life: 360 + Math.random() * 280,
+              size: 2 + Math.random() * 3,
+              color: Object.values(COLORS)[Math.floor(Math.random() * 7)]
+            });
+          }
+        }
+
+        function updateParticles(player, delta) {
+          player.particles = player.particles.filter((particle) => {
+            particle.x += particle.vx * delta / 16;
+            particle.y += particle.vy * delta / 16;
+            particle.vy += 0.12 * delta / 16;
+            particle.life -= delta;
+            return particle.life > 0;
+          });
+        }
+
+        function announce(player, text, color = '#fbbf24') {
+          player.floatingText.push({ text, color, age: 0, life: 900, x: player.canvas.width / 2, y: player.canvas.height * 0.48 });
+        }
+
+        function updateFloatingText(player, delta) {
+          player.floatingText = player.floatingText.filter((item) => {
+            item.age += delta;
+            item.y -= delta * 0.035;
+            return item.age < item.life;
+          });
+        }
+
+        function drawFloatingText(player) {
+          const ctx = player.ctx;
+          player.floatingText.forEach((item) => {
+            const progress = item.age / item.life;
+            const scale = 0.8 + Math.min(0.35, item.age / 180);
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, 1 - progress);
+            ctx.translate(item.x, item.y);
+            ctx.scale(scale, scale);
+            ctx.textAlign = 'center';
+            ctx.font = '900 24px Impact, sans-serif';
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#06111d';
+            ctx.strokeText(item.text, 0, 0);
+            ctx.fillStyle = item.color;
+            ctx.shadowColor = item.color;
+            ctx.shadowBlur = 14;
+            ctx.fillText(item.text, 0, 0);
+            ctx.restore();
+          });
+        }
+
+        function drawParticles(player) {
+          player.particles.forEach((particle) => {
+            player.ctx.globalAlpha = Math.max(0, particle.life / 640);
+            player.ctx.fillStyle = particle.color;
+            player.ctx.shadowColor = particle.color;
+            player.ctx.shadowBlur = 10;
+            player.ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+          });
+          player.ctx.globalAlpha = 1;
+          player.ctx.shadowBlur = 0;
+        }
+
+        function drawPlayfieldBackground(ctx, time) {
+          const background = PLAYFIELD_BACKGROUNDS[profile.activeBackground] || PLAYFIELD_BACKGROUNDS.minimalDark;
+          const gradient = ctx.createLinearGradient(0, 0, 0, ROWS * BLOCK);
+          if (background.type === 'minimalLight') {
+            gradient.addColorStop(0, '#d8e1e8');
+            gradient.addColorStop(1, '#74808b');
+          } else if (background.type === 'starfield') {
+            gradient.addColorStop(0, '#020617');
+            gradient.addColorStop(1, '#172554');
+          } else if (background.type === 'matrixRain') {
+            gradient.addColorStop(0, '#020b08');
+            gradient.addColorStop(1, '#06351f');
+          } else if (background.type === 'retroGrid') {
+            gradient.addColorStop(0, '#10072b');
+            gradient.addColorStop(1, '#35105b');
+          } else {
+            gradient.addColorStop(0, '#111827');
+            gradient.addColorStop(1, '#030712');
+          }
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, COLS * BLOCK, ROWS * BLOCK);
+
+          ctx.save();
+          ctx.globalAlpha = 0.35;
+          if (background.type === 'retroGrid') {
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 1;
+            const horizon = ROWS * BLOCK * 0.56;
+            for (let y = horizon; y < ROWS * BLOCK + 40; y += 28) {
+              const offset = (time * 0.025) % 28;
+              ctx.beginPath();
+              ctx.moveTo(0, y + offset);
+              ctx.lineTo(COLS * BLOCK, y + offset);
+              ctx.stroke();
+            }
+            for (let x = -COLS * BLOCK; x <= COLS * BLOCK * 2; x += 36) {
+              ctx.beginPath();
+              ctx.moveTo(COLS * BLOCK / 2, horizon);
+              ctx.lineTo(x, ROWS * BLOCK);
+              ctx.stroke();
+            }
+          } else if (background.type === 'matrixRain') {
+            ctx.fillStyle = '#4ade80';
+            ctx.font = '12px monospace';
+            for (let x = 8; x < COLS * BLOCK; x += 24) {
+              const y = ((time * 0.035 + x * 13) % (ROWS * BLOCK + 80)) - 40;
+              ctx.fillText(String.fromCharCode(0x30a0 + ((x * 7) % 80)), x, y);
+              ctx.fillText(String.fromCharCode(0x30a0 + ((x * 11) % 80)), x, y - 18);
+            }
+          } else if (background.type === 'starfield') {
+            ctx.fillStyle = '#e0f2fe';
+            for (let index = 0; index < 42; index++) {
+              const x = (index * 71) % (COLS * BLOCK);
+              const y = (index * 113 + time * (0.008 + (index % 3) * 0.003)) % (ROWS * BLOCK);
+              const size = index % 5 === 0 ? 2 : 1;
+              ctx.globalAlpha = 0.25 + ((Math.sin(time * 0.004 + index) + 1) * 0.2);
+              ctx.fillRect(x, y, size, size);
+            }
+          }
+          ctx.restore();
+        }
+
         function drawBoard(player) {
           const ctx = player.ctx;
           ctx.clearRect(0, 0, player.canvas.width, player.canvas.height);
-          ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-bg').trim() || '#091427';
-          ctx.fillRect(0, 0, player.canvas.width, player.canvas.height);
+          drawPlayfieldBackground(ctx, performance.now());
 
           for (let y = 0; y < ROWS; y++) {
             for (let x = 0; x < COLS; x++) {
@@ -2017,17 +2825,66 @@
             ctx.lineTo(player.canvas.width, y * BLOCK);
             ctx.stroke();
           }
+          drawParticles(player);
+          drawFloatingText(player);
+          if (performance.now() < player.shakeUntil) {
+            player.canvas.style.transform = `translate(${(Math.random() - 0.5) * 4}px, ${(Math.random() - 0.5) * 4}px)`;
+          } else {
+            player.canvas.style.transform = '';
+          }
         }
 
         function updatePlayers(delta) {
+          const matchPaused = players.some((player) => player.paused);
+          if (!matchPaused) game.elapsedMs += delta;
+          if (game.mode === 'boss' && !matchPaused) {
+            game.bossTimer += delta;
+            if (game.bossTimer >= 30000) {
+              game.bossTimer = 0;
+              const modifiers = ['speed', 'garbage', 'inverted'];
+              game.bossModifier = modifiers[Math.floor(Math.random() * modifiers.length)];
+              players.forEach((player) => {
+                if (!player.running) return;
+                if (game.bossModifier === 'speed') player.dropInterval = Math.max(90, player.dropInterval * 0.5);
+                if (game.bossModifier === 'garbage') player.pendingGarbage += 2;
+              });
+              const label = game.bossModifier === 'speed' ? 'SPEED SURGE' : game.bossModifier === 'garbage' ? 'GARBAGE DROP' : 'CONTROLS INVERTED';
+              players.forEach((player) => announce(player, label, '#f472b6'));
+              showToast(`Boss Rush: ${label}`, 'info');
+            }
+          }
+          if (game.mode === 'ultra' && game.elapsedMs >= 120000) {
+            finishMatch(null, `Ultra over: ${player1.score.toLocaleString()} points`);
+            return;
+          }
           players.forEach((player) => {
+            updateParticles(player, delta);
+            updateFloatingText(player, delta);
             if (!player.running || player.paused || player.gameOver) return;
+            if (game.mode === 'boss') {
+              ui.matchStatus.textContent = `Boss Rush: ${formatTime(Math.max(0, 30000 - game.bossTimer))} to ${game.bossModifier === 'normal' ? 'next shift' : game.bossModifier}`;
+            } else if (game.mode === 'sprint' || game.mode === 'ultra') {
+              ui.matchStatus.textContent = game.mode === 'sprint'
+                ? `Sprint: ${formatTime(game.elapsedMs)} / ${player.lines} of 40 lines`
+                : `Ultra: ${formatTime(Math.max(0, 120000 - game.elapsedMs))} remaining`;
+            }
+            if (game.modifier === 'garbageRain') {
+              player.garbageTimer += delta;
+              if (player.garbageTimer >= 5000) {
+                player.pendingGarbage += 1;
+                player.garbageTimer = 0;
+              }
+            }
             player.accumulator += delta;
             if (player.accumulator >= player.dropInterval) {
               player.accumulator = 0;
               if (!movePiece(player, 0, 1)) {
                 mergePiece(player);
               }
+            }
+            if (game.mode === 'sprint' && player.lines >= 40) {
+              saveSprintBest(game.elapsedMs);
+              finishMatch(player, `Sprint complete: ${formatTime(game.elapsedMs)}`);
             }
             drawBoard(player);
           });
@@ -2048,9 +2905,16 @@
           }
         }
 
-        function handleAction(playerId, action) {
+        function handleAction(playerId, action, fromReplay = false) {
           const player = playerId === 'p1' ? player1 : player2;
           if (!player.running || player.paused || player.gameOver) return;
+          if (!fromReplay && !game.replayPlayback) {
+            game.replayLog.push({ time: Math.round(game.elapsedMs), playerId, action });
+          }
+          if (game.modifier === 'inverted' || game.bossModifier === 'inverted') {
+            if (action === 'left') action = 'right';
+            else if (action === 'right') action = 'left';
+          }
           switch (action) {
             case 'left':
               movePiece(player, -1, 0);
@@ -2076,7 +2940,17 @@
         }
 
         function bindKeyboard() {
+          const audioUnlockHandler = () => {
+            unlockAudioContext();
+            document.removeEventListener('pointerdown', audioUnlockHandler);
+            document.removeEventListener('keydown', audioUnlockHandler);
+            document.removeEventListener('touchstart', audioUnlockHandler);
+          };
+          document.addEventListener('pointerdown', audioUnlockHandler, { once: true });
+          document.addEventListener('touchstart', audioUnlockHandler, { once: true });
+
           document.addEventListener('keydown', (event) => {
+            unlockAudioContext();
             if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
               return;
             }
@@ -2126,9 +3000,42 @@
           });
         }
 
+        const gamepadState = new Map();
+
+        function pollGamepads() {
+          const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+          pads.forEach((pad) => {
+            if (!pad) return;
+            const playerId = pad.index === 0 ? 'p1' : 'p2';
+            const previous = gamepadState.get(pad.index) || { buttons: [], axisX: 0, axisY: 0 };
+            const pressed = (buttonIndex) => Boolean(pad.buttons[buttonIndex]?.pressed);
+            const edge = (buttonIndex) => pressed(buttonIndex) && !previous.buttons[buttonIndex];
+            const axisX = pad.axes[0] || 0;
+            const axisY = pad.axes[1] || 0;
+            if (Math.abs(axisX) > 0.55 && (!previous.axisX || Math.sign(axisX) !== Math.sign(previous.axisX))) {
+              handleAction(playerId, axisX < 0 ? 'left' : 'right');
+            }
+            if (axisY > 0.55 && (!previous.axisY || previous.axisY <= 0.55)) handleAction(playerId, 'down');
+            if (edge(0)) handleAction(playerId, 'rotate');
+            if (edge(1)) handleAction(playerId, 'hold');
+            if (edge(4) || edge(5) || edge(6) || edge(7)) handleAction(playerId, 'drop');
+            if (edge(12)) handleAction(playerId, 'rotate');
+            if (edge(13)) handleAction(playerId, 'down');
+            if (edge(14)) handleAction(playerId, 'left');
+            if (edge(15)) handleAction(playerId, 'right');
+            gamepadState.set(pad.index, { buttons: pad.buttons.map((button) => button.pressed), axisX, axisY });
+          });
+          requestAnimationFrame(pollGamepads);
+        }
+
         function setupUI() {
           ui.singlePlayerBtn.addEventListener('click', () => enterMode('single'));
           ui.battleModeBtn.addEventListener('click', () => enterMode('battle'));
+          ui.sprintModeBtn.addEventListener('click', () => enterMode('sprint'));
+          ui.ultraModeBtn.addEventListener('click', () => enterMode('ultra'));
+          ui.bossRushBtn.addEventListener('click', () => enterMode('boss'));
+          ui.watchReplayBtn.addEventListener('click', () => watchReplay());
+          ui.copyReplayBtn.addEventListener('click', () => copyReplay());
           ui.dailyChallengeBtn.addEventListener('click', () => {
             initializeDailyChallenge();
             dailyModifierActive = true;
@@ -2136,6 +3043,11 @@
           });
           ui.achievementsBtn.addEventListener('click', () => openAchievements());
           ui.tutorialBtn.addEventListener('click', () => openTutorial());
+          ui.profileBtn.addEventListener('click', () => openProfile());
+          ui.closeProfileBtn.addEventListener('click', () => closeProfile());
+          ui.profileModal.addEventListener('click', (event) => {
+            if (event.target === ui.profileModal) closeProfile();
+          });
           ui.leaderboardBtn.addEventListener('click', () => openLeaderboard());
           ui.closeLeaderboardBtn.addEventListener('click', () => closeLeaderboard());
           ui.refreshLeaderboardBtn.addEventListener('click', () => refreshLeaderboard());
@@ -2151,6 +3063,15 @@
           ui.pauseBtn.addEventListener('click', () => togglePause());
           ui.exitBtn.addEventListener('click', () => returnToMenu());
           ui.muteBtn.addEventListener('click', () => toggleMute());
+          ui.ambientEffect.value = ambientEffect;
+          ui.ambientEffect.addEventListener('change', (event) => {
+            ambientEffect = event.target.value;
+            try {
+              localStorage.setItem('neon-tetris-ambient-effect', ambientEffect);
+            } catch (error) {
+              console.warn('Could not save ambient effect preference.');
+            }
+          });
 
           ui.crtToggleBtn.addEventListener('click', () => {
             document.body.classList.toggle('crt-mode');
@@ -2159,6 +3080,14 @@
           ui.shopBtn.addEventListener('click', () => openShop());
           ui.closeShopBtn.addEventListener('click', () => closeShop());
           ui.supporterBtn.addEventListener('click', () => unlockAllAsSupporter());
+          ui.purchaseTestMode.addEventListener('change', (event) => {
+            try {
+              localStorage.setItem('neon-tetris-purchase-test-mode', String(event.target.checked));
+            } catch (error) {
+              console.warn('Could not save purchase test mode setting.');
+            }
+            renderPaidShop();
+          });
           ui.shopModal.addEventListener('click', (event) => {
             if (event.target === ui.shopModal) closeShop();
           });
@@ -2195,12 +3124,27 @@
               players.forEach((player) => {
                 player.paused = false;
               });
+              startMusic();
               hideOverlay();
               return;
             }
             startMatch();
           });
           ui.overlayMenuBtn.addEventListener('click', () => returnToMenu());
+
+          // Prevent default touch scrolling during gameplay on mobile
+          const preventScrollDuringGame = (e) => {
+            if (game.running) {
+              e.preventDefault();
+            }
+          };
+          document.addEventListener('touchmove', preventScrollDuringGame, { passive: false });
+          document.addEventListener('touchstart', (e) => {
+            // Allow noscroll events to unlock audio on first touch
+            if (e.target === document.documentElement || e.target === document.body) {
+              unlockAudioContext();
+            }
+          });
         }
 
         function enterMode(mode) {
@@ -2212,8 +3156,14 @@
           ui.startBtn.classList.remove('hidden');
           ui.pauseBtn.classList.remove('hidden');
           ui.exitBtn.classList.remove('hidden');
-          player2.panel.classList.toggle('single-hidden', mode === 'single' || mode === 'daily');
-          ui.matchStatus.textContent = mode === 'single'
+          player2.panel.classList.toggle('single-hidden', mode !== 'battle');
+          ui.matchStatus.textContent = mode === 'boss'
+            ? 'Boss Rush: environmental shift in 30.000s'
+            : mode === 'sprint'
+            ? 'Sprint: 00:00.000 / 40 lines'
+            : mode === 'ultra'
+            ? 'Ultra: 02:00.000 remaining'
+            : mode === 'single'
             ? 'Single Player: reach 10,000 points'
             : mode === 'daily'
             ? `Daily Challenge: ${dailyModifierIcon} ${dailyModifierName}`
@@ -2224,6 +3174,7 @@
         function returnToMenu() {
           game.running = false;
           stopGameLoop();
+          stopMusic();
           players.forEach((player) => {
             player.running = false;
             player.paused = false;
@@ -2244,9 +3195,14 @@
           setSeed(params.get('seed') || '12345');
           setupUI();
           bindKeyboard();
-          setVolume(0.8);
+          pollGamepads();
+          setVolume(muted ? 0 : 0.8);
           applyTheme(activeTheme);
           updateCoinUI();
+          initializeAuth();
+          resizeEnvironmentCanvas();
+          window.addEventListener('resize', resizeEnvironmentCanvas);
+          requestAnimationFrame(environmentLoop);
 
           ui.overlayTitle.textContent = 'Neon Tetris';
           ui.overlayText.textContent = 'Choose a mode from the main menu';
