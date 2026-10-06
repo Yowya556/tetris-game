@@ -1,0 +1,19 @@
+{
+  "name": "Neon Tetris Arcade",
+  "short_name": "Neon Tetris",
+  "description": "A neon arcade puzzle game with daily runs, custom polyominoes, and local high scores.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a1020",
+  "theme_color": "#0a1020",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
